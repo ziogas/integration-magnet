@@ -10,8 +10,8 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
     "types": "tsc --noEmit",
     "format": "prettier --write ."
   },
@@ -38,6 +38,7 @@
     "zod": "^4.1.5"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.13",
     "@total-typescript/ts-reset": "^0.6.1",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",

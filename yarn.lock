@@ -1377,7 +1377,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/eslintrc@npm:^3.3.1":
+"@eslint/eslintrc@npm:^3, @eslint/eslintrc@npm:^3.3.1":
   version: 3.3.1
   resolution: "@eslint/eslintrc@npm:3.3.1"
   dependencies:
@@ -5028,6 +5028,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "integration-magnet@workspace:."
   dependencies:
+    "@eslint/eslintrc": "npm:^3"
     "@radix-ui/react-scroll-area": "npm:^1.2.10"
     "@radix-ui/react-select": "npm:^2.2.6"
     "@radix-ui/react-slot": "npm:^1.2.3"
