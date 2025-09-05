@@ -7,8 +7,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'NextJS template',
-  description: 'NextJS template',
+  title: 'Membrane AI Integration Builder - Generate Custom Integrations',
+  description:
+    'Build AI-powered integrations for your product in seconds. Membrane helps you connect 3,289+ apps with intelligent code generation.',
   icons: [
     // { rel: 'apple-touch-icon', url: '/apple-touch-icon.png' },
     // { rel: 'icon', sizes: '32x32', url: '/favicon-32x32.png' },
@@ -22,7 +23,7 @@ export default function Layout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="bg-gray-50 text-gray-950 scroll-smooth h-full antialiased">
+    <html lang="en" className="dark scroll-smooth h-full antialiased">
       <body className="min-h-full">{children}</body>
     </html>
   );

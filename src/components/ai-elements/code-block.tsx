@@ -6,10 +6,7 @@ import { CheckIcon, CopyIcon } from 'lucide-react';
 import type { ComponentProps, HTMLAttributes, ReactNode } from 'react';
 import { createContext, useContext, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import {
-  oneDark,
-  oneLight,
-} from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 type CodeBlockContextType = {
   code: string;
@@ -36,16 +33,13 @@ export const CodeBlock = ({
 }: CodeBlockProps) => (
   <CodeBlockContext.Provider value={{ code }}>
     <div
-      className={cn(
-        'relative w-full overflow-hidden rounded-md border bg-background text-foreground',
-        className
-      )}
+      className={cn('relative w-full overflow-hidden rounded-md border bg-background text-foreground', className)}
       {...props}
     >
       <div className="relative">
         {/* @ts-expect-error - SyntaxHighlighter is not a valid JSX component */}
         <SyntaxHighlighter
-          className="overflow-hidden dark:hidden"
+          className="dark:hidden overflow-hidden"
           codeTagProps={{
             className: 'font-mono text-sm',
           }}
@@ -69,7 +63,7 @@ export const CodeBlock = ({
         </SyntaxHighlighter>
         {/* @ts-expect-error - SyntaxHighlighter is not a valid JSX component */}
         <SyntaxHighlighter
-          className="hidden overflow-hidden dark:block"
+          className="dark:block hidden overflow-hidden"
           codeTagProps={{
             className: 'font-mono text-sm',
           }}
@@ -91,11 +85,7 @@ export const CodeBlock = ({
         >
           {code}
         </SyntaxHighlighter>
-        {children && (
-          <div className="absolute top-2 right-2 flex items-center gap-2">
-            {children}
-          </div>
-        )}
+        {children && <div className="top-2 right-2 absolute flex items-center gap-2">{children}</div>}
       </div>
     </div>
   </CodeBlockContext.Provider>
@@ -137,13 +127,7 @@ export const CodeBlockCopyButton = ({
   const Icon = isCopied ? CheckIcon : CopyIcon;
 
   return (
-    <Button
-      className={cn('shrink-0', className)}
-      onClick={copyToClipboard}
-      size="icon"
-      variant="ghost"
-      {...props}
-    >
+    <Button className={cn('shrink-0', className)} onClick={copyToClipboard} size="icon" variant="ghost" {...props}>
       {children ?? <Icon size={14} />}
     </Button>
   );
