@@ -1,5 +1,6 @@
 import '@/styles/global.css';
 import type { Metadata, Viewport } from 'next';
+import { Toaster } from '@/components/ui/sonner';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -24,7 +25,10 @@ export default function Layout({
 }>) {
   return (
     <html lang="en" className="dark scroll-smooth h-full antialiased">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <Toaster richColors position="top-center" />
+      </body>
     </html>
   );
 }

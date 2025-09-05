@@ -9,28 +9,11 @@ import { Suggestion } from '@/components/ai-elements/suggestion';
 import { Globe, AlertCircle, Sparkles, ArrowRight, Loader2, Zap } from 'lucide-react';
 import { EXAMPLE_PROMPTS } from './constants';
 import { cn } from '@/lib/utils';
+import { useIntegration } from '@/contexts/integration-context';
 
-interface FormSectionProps {
-  companyUrl: string;
-  setCompanyUrl: (url: string) => void;
-  urlError: string;
-  setUrlError: (error: string) => void;
-  useCase: string;
-  setUseCase: (useCase: string) => void;
-  isLoading: boolean;
-  onGenerate: () => void;
-}
-
-export function FormSection({
-  companyUrl,
-  setCompanyUrl,
-  urlError,
-  setUrlError,
-  useCase,
-  setUseCase,
-  isLoading,
-  onGenerate,
-}: FormSectionProps) {
+export function FormSection() {
+  const { domain, setDomain, urlError, setUrlError, useCase, setUseCase, isLoading, generateIntegration } =
+    useIntegration();
   const validateUrl = useCallback(
     (url: string) => {
       if (!url) {
@@ -50,19 +33,19 @@ export function FormSection({
   const handleUrlChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
-      setCompanyUrl(value);
+      setDomain(value);
       validateUrl(value);
     },
-    [setCompanyUrl, validateUrl]
+    [setDomain, validateUrl]
   );
 
   const handleExampleDomain = useCallback(() => {
     const exampleDomain = 'stripe.com';
-    setCompanyUrl(exampleDomain);
+    setDomain(exampleDomain);
     validateUrl(exampleDomain);
-  }, [setCompanyUrl, validateUrl]);
+  }, [setDomain, validateUrl]);
 
-  const isFormValid = companyUrl && useCase && !urlError && !isLoading;
+  const isFormValid = domain && useCase && !urlError && !isLoading;
 
   return (
     <Card className="bg-gradient-to-b from-gray-900/60 to-gray-900/40 backdrop-blur-xl border-gray-800/50 max-w-4xl p-8 mx-auto shadow-2xl">
@@ -77,7 +60,7 @@ export function FormSection({
               id="company-domain"
               type="text"
               placeholder="your-company.com"
-              value={companyUrl}
+              value={domain}
               onChange={handleUrlChange}
               className={cn(
                 'pl-10 h-12 bg-gray-950/60 border-gray-700/50 text-gray-100',
@@ -151,7 +134,7 @@ export function FormSection({
           <Button
             type="button"
             disabled={!isFormValid}
-            onClick={onGenerate}
+            onClick={generateIntegration}
             size="lg"
             className={cn(
               'relative group h-12 px-8 font-semibold',

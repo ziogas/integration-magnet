@@ -1,31 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { IntegrationProvider } from '@/contexts/integration-context';
 import { HeroSection } from './integration-generator/hero-section';
 import { FormSection } from './integration-generator/form-section';
 import { LoadingState } from './integration-generator/loading-state';
 import { ResultsSection } from './integration-generator/results-section';
 
-export function IntegrationGenerator() {
-  const [companyUrl, setCompanyUrl] = useState('');
-  const [urlError, setUrlError] = useState('');
-  const [useCase, setUseCase] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-
-  const handleGenerate = useCallback(async () => {
-    if (!companyUrl || !useCase || urlError) return;
-
-    setIsLoading(true);
-    setShowResults(false);
-
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-
-    setIsLoading(false);
-    setShowResults(true);
-  }, [companyUrl, useCase, urlError]);
-
+function IntegrationGeneratorContent() {
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-[hsl(222,47%,11%)] via-[hsl(222,47%,9%)] to-[hsl(217,33%,12%)]" />
@@ -39,23 +20,20 @@ export function IntegrationGenerator() {
 
       <div className="max-w-7xl lg:px-8 lg:py-20 relative z-10 px-6 py-16 mx-auto">
         <HeroSection />
-
         <div className="mt-16">
-          <FormSection
-            companyUrl={companyUrl}
-            setCompanyUrl={setCompanyUrl}
-            urlError={urlError}
-            setUrlError={setUrlError}
-            useCase={useCase}
-            setUseCase={setUseCase}
-            isLoading={isLoading}
-            onGenerate={handleGenerate}
-          />
+          <FormSection />
         </div>
-
-        <LoadingState isLoading={isLoading} />
-        <ResultsSection showResults={showResults} />
+        <LoadingState />
+        <ResultsSection />
       </div>
     </section>
+  );
+}
+
+export function IntegrationGenerator() {
+  return (
+    <IntegrationProvider>
+      <IntegrationGeneratorContent />
+    </IntegrationProvider>
   );
 }

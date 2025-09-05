@@ -50,23 +50,6 @@ export type ScenarioTemplate = {
 };
 
 // API Response Types
-export type FirecrawlResponse = {
-  success: boolean;
-  data?: {
-    title?: string;
-    description?: string;
-    content?: string;
-    metadata?: {
-      title?: string;
-      description?: string;
-      keywords?: string;
-      ogTitle?: string;
-      ogDescription?: string;
-    };
-  };
-  error?: string;
-};
-
 export type OpenAIResponse = {
   parsedUseCase?: ParsedUseCase;
   matchedScenario?: ScenarioTemplate;
@@ -87,7 +70,7 @@ export type ScenarioGenerationResult = {
 
 // Form Types
 export type FormData = {
-  companyUrl: string;
+  domain: string;
   useCase: string;
   email?: string;
   gdprConsent?: boolean;

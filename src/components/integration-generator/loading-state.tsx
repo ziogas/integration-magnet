@@ -1,12 +1,13 @@
+'use client';
+
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
+import { useIntegration } from '@/contexts/integration-context';
 
-interface LoadingStateProps {
-  isLoading: boolean;
-}
+export function LoadingState() {
+  const { isLoading } = useIntegration();
 
-export function LoadingState({ isLoading }: LoadingStateProps) {
   if (!isLoading) return null;
 
   return (
