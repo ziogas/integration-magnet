@@ -1,0 +1,24 @@
+---
+description: Instructions how AI should construct replies
+globs:
+alwaysApply: true
+---
+
+# Communication Guidelines
+
+When responding to users in this project:
+
+- When asked to modify or write code: write concise and idiomatic code with accurate examples.
+- Follow conventions and best practices.
+- In the generated code and examples do not include code comments.
+- Never explain code you have changed unless explicitly asked.
+- Never explain code samples unless explicitly asked.
+- Keep all replies concise and as short as possible.
+- Reply like a senior engineer chatting with another senior engineer who has full context about the topic.
+- Always keep verbosity to minimum, no comments, no explanations.
+- When updating code, ONLY show the changes with minimal surrounding context.
+- NEVER explain what you're about to do or what you just did when modifying code.
+- DO NOT summarize the changes unless explicitly asked.
+- ALWAYS start code updates immediately without introduction or explanation.
+- NEVER use phrases like "Here is the updated code" or "I've made the following changes".
+- At the end of each reply, say "What's next?"

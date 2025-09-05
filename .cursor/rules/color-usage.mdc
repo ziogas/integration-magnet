@@ -1,0 +1,131 @@
+---
+description: Guidelines for using predefined colors from global.css to ensure consistent theming and dark mode support
+globs: **/*.ts, **/*.tsx, **/*.js, **/*.jsx, **/*.css
+alwaysApply: false
+---
+
+@file ../src/styles/global.css
+
+# Color Usage Guidelines
+
+## Introduction
+
+This rule ensures consistent color usage across the application by enforcing the use of predefined CSS custom properties from `global.css`. This approach provides automatic dark mode support and maintains design consistency throughout the project.
+
+## Why This Matters
+
+- **Consistency**: All colors are centrally managed in `global.css`
+- **Dark Mode**: Colors automatically adapt between light and dark themes
+- **Maintainability**: Color changes only need to be made in one place
+- **Accessibility**: Predefined colors ensure proper contrast ratios
+
+## Pattern Description
+
+Always use the predefined CSS custom properties from `global.css` for any color needs. These colors are available as both CSS variables and Tailwind classes.
+
+### Available Color Categories
+
+- **Background & Foreground**: `background`, `foreground`
+- **Card Components**: `card`, `card-foreground`
+- **Popover Components**: `popover`, `popover-foreground`
+- **Primary Actions**: `primary`, `primary-foreground`
+- **Secondary Actions**: `secondary`, `secondary-foreground`
+- **Muted Elements**: `muted`, `muted-foreground`
+- **Accent Elements**: `accent`, `accent-foreground`
+- **Destructive Actions**: `destructive`, `destructive-foreground`
+- **Form Elements**: `border`, `input`, `ring`
+- **Charts**: `chart-1`, `chart-2`, `chart-3`, `chart-4`, `chart-5`
+- **Sidebar**: `sidebar`, `sidebar-foreground`, `sidebar-primary`, `sidebar-primary-foreground`, `sidebar-accent`, `sidebar-accent-foreground`, `sidebar-border`, `sidebar-ring`
+
+### Usage Examples
+
+#### ✅ Correct Usage - Tailwind Classes
+
+```tsx
+// Use predefined color classes
+<div className="bg-background text-foreground">
+  <button className="bg-primary text-primary-foreground hover:bg-primary/90">Primary Action</button>
+  <div className="bg-card text-card-foreground border-border border">Card content</div>
+</div>
+```
+
+#### ✅ Correct Usage - CSS Custom Properties
+
+```tsx
+// Use CSS custom properties when needed
+<div
+  style={{
+    backgroundColor: 'var(--background)',
+    color: 'var(--foreground)',
+    borderColor: 'var(--border)',
+  }}
+>
+  Custom styled element
+</div>
+```
+
+#### ✅ Correct Usage - CSS Files
+
+```css
+.custom-component {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+}
+
+.custom-component:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+```
+
+#### ❌ Incorrect Usage - Hardcoded Colors
+
+```tsx
+// DON'T use hardcoded colors
+<div className="bg-white text-black"> // ❌ No dark mode support
+<div className="bg-gray-100 text-gray-900"> // ❌ Not from design system
+<div style={{ backgroundColor: '#ffffff' }}> // ❌ Hardcoded hex values
+<div className="bg-[#f0f0f0]"> // ❌ Arbitrary values
+```
+
+## Implementation Steps
+
+1. **Identify Color Usage**: Look for any hardcoded colors in your components
+2. **Map to Design System**: Find the appropriate color from `global.css`
+3. **Replace with Tailwind Class**: Use the corresponding Tailwind class (e.g., `bg-background`, `text-foreground`)
+4. **Test Dark Mode**: Verify the component looks correct in both light and dark modes
+5. **Use CSS Variables for Edge Cases**: For complex styling, use `var(--color-name)` directly
+
+## Color Selection Guidelines
+
+- **Backgrounds**: Use `background` for main app background, `card` for elevated content
+- **Text**: Use `foreground` for main text, `muted-foreground` for secondary text
+- **Actions**: Use `primary` for main actions, `secondary` for secondary actions, `destructive` for dangerous actions
+- **Borders**: Use `border` for standard borders, `input` for form element borders
+- **Interactive Elements**: Use `accent` for hover states and interactive elements
+
+## Common Pitfalls
+
+- **Hardcoded Colors**: Never use hardcoded hex values, RGB, or HSL colors
+- **Arbitrary Values**: Avoid Tailwind arbitrary values like `bg-[#ffffff]` or `text-[rgb(0,0,0)]`
+- **Generic Color Names**: Don't use generic Tailwind colors like `bg-white`, `text-black`, `bg-gray-100`
+- **Missing Dark Mode**: Always test components in both light and dark modes
+- **Wrong Color Context**: Don't use `card-foreground` text on `background`, use `foreground` instead
+- **Accessibility**: Ensure proper contrast by using matching foreground colors (e.g., `primary` with `primary-foreground`)
+
+## Migration from Hardcoded Colors
+
+If you find existing hardcoded colors:
+
+1. **White/Light Colors**: Replace with `background`, `card`, or `secondary`
+2. **Black/Dark Colors**: Replace with `foreground` or `card-foreground`
+3. **Gray Colors**: Replace with `muted`, `muted-foreground`, or `border`
+4. **Brand Colors**: Replace with `primary` or `accent`
+5. **Error Colors**: Replace with `destructive`
+
+## Real-World Examples
+
+- [Button Component](mdc:../src/components/ui/button.tsx)
+- [Card Component](mdc:../src/components/ui/card.tsx)
+- [Dialog Component](mdc:../src/components/ui/dialog.tsx)
