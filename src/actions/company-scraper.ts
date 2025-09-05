@@ -15,20 +15,21 @@ function extractCompanyName(domain: string, title?: string): string {
   return nameFromDomain.charAt(0).toUpperCase() + nameFromDomain.slice(1);
 }
 
-export async function scrapeCompany(domain: string): Promise<CompanyContext> {
+export async function scrapeCompany(domain: string): Promise<{ data: CompanyContext; hasFullData: boolean }> {
   const url = `https://${domain}`;
+  const fallbackData: CompanyContext = {
+    url,
+    domain,
+    name: extractCompanyName(domain),
+    description: undefined,
+    industry: undefined,
+    logoUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}`,
+    faviconUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}&size=32`,
+  };
 
   if (!process.env.FIRECRAWL_API_KEY) {
     console.warn('FIRECRAWL_API_KEY not found, using fallback data');
-    return {
-      url,
-      domain,
-      name: extractCompanyName(domain),
-      description: undefined,
-      industry: undefined,
-      logoUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}`,
-      faviconUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}&size=32`,
-    };
+    return { data: fallbackData, hasFullData: false };
   }
 
   try {
@@ -42,7 +43,8 @@ export async function scrapeCompany(domain: string): Promise<CompanyContext> {
     });
 
     if (!result || !result.metadata) {
-      throw new Error('Failed to scrape URL');
+      console.warn('No metadata returned from scraping');
+      return { data: fallbackData, hasFullData: false };
     }
 
     const { metadata } = result;
@@ -54,28 +56,21 @@ export async function scrapeCompany(domain: string): Promise<CompanyContext> {
       (metadata?.description as string) ||
       (metadata?.ogDescription as string) ||
       (metadata?.['og:description'] as string);
-    const companyDescription = description || undefined;
 
     return {
-      url,
-      domain,
-      name: companyName,
-      description: companyDescription,
-      industry: undefined,
-      logoUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}`,
-      faviconUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}&size=32`,
+      data: {
+        url,
+        domain,
+        name: companyName,
+        description: description || undefined,
+        industry: undefined,
+        logoUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}`,
+        faviconUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}&size=32`,
+      },
+      hasFullData: true,
     };
   } catch (error) {
     console.error('Error scraping URL:', error);
-
-    return {
-      url,
-      domain,
-      name: extractCompanyName(domain),
-      description: undefined,
-      industry: undefined,
-      logoUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}`,
-      faviconUrl: `https://logo.dev/${domain}?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}&size=32`,
-    };
+    return { data: fallbackData, hasFullData: false };
   }
 }
