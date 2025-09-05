@@ -1,3 +1,9 @@
+import { IntegrationGenerator } from '@/components/integration-generator';
+
 export default function Home() {
-  return <div>Hello World</div>;
+  return (
+    <main className="min-h-screen">
+      <IntegrationGenerator />
+    </main>
+  );
 }

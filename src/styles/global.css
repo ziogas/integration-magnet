@@ -130,6 +130,13 @@
     min-height: 100vh;
     background: linear-gradient(180deg, hsl(222 47% 11%) 0%, hsl(222 47% 8%) 100%);
   }
+
+  /* Restore pointer cursor for buttons - fixes Tailwind v4 breaking change */
+  a,
+  button:not([disabled]),
+  [role='button']:not([disabled]) {
+    cursor: pointer !important;
+  }
 }
 
 @layer utilities {
