@@ -40,7 +40,6 @@ export async function queryGpt<T extends z.ZodSchema>(
         { timeout: 120000 }
       )
       .catch((error) => {
-        // Handle OpenAI API specific errors
         if (error.status === 429) {
           throw new Error('Rate limit exceeded. Please try again later.');
         }
@@ -61,7 +60,6 @@ export async function queryGpt<T extends z.ZodSchema>(
 
     return parsedResult;
   } catch (error) {
-    // Re-throw the error directly since we're using standard Error
     throw error;
   }
 }

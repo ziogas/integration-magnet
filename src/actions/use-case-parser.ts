@@ -25,15 +25,6 @@ export async function parseUseCase(
     };
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    console.warn('OpenAI API key not configured, returning basic parse');
-    return {
-      description: useCase,
-      entities: [],
-      actions: [],
-    };
-  }
-
   try {
     const systemPrompt = `You are an integration expert analyzing use-case descriptions.
 Extract key information from the use-case to understand what integration is needed.
