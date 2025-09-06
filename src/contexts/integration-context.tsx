@@ -1,24 +1,26 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { scrapeCompany } from '@/actions/company-scraper';
+import { useUrlParams } from '@/hooks/use-url-params';
 import { toast } from 'sonner';
-import type { CompanyContext } from '@/types';
+import type { CompanyContext, ScenarioGenerationResult } from '@/types';
 import { EXAMPLE_PROMPTS } from '@/components/integration-generator/constants';
+import { scrapeCompany } from '@/actions/company-scraper';
+import { generateScenario } from '@/actions/generate-scenario';
 
 type IntegrationState = {
   domain: string;
-  urlError: string;
+  domainError: string;
   useCase: string;
   isLoading: boolean;
   showResults: boolean;
   companyContext: CompanyContext | null;
+  scenarioResult: ScenarioGenerationResult | null;
 };
 
 type IntegrationContextType = IntegrationState & {
   setDomain: (domain: string) => void;
-  setUrlError: (error: string) => void;
+  setDomainError: (error: string) => void;
   setUseCase: (useCase: string) => void;
   generateIntegration: () => Promise<void>;
   resetState: () => void;
@@ -28,25 +30,25 @@ const IntegrationContext = createContext<IntegrationContextType | undefined>(und
 
 const initialState: IntegrationState = {
   domain: '',
-  urlError: '',
+  domainError: '',
   useCase: '',
   isLoading: false,
   showResults: false,
   companyContext: null,
+  scenarioResult: null,
 };
 
 export function IntegrationProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<IntegrationState>(initialState);
   const [isInitialized, setIsInitialized] = useState(false);
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const { updateUrlParams, getParam, clearParams } = useUrlParams();
 
   useEffect(() => {
     if (isInitialized) return;
 
-    const domainParam = searchParams.get('domain');
-    const emailParam = searchParams.get('email');
-    const useCaseParam = searchParams.get('usecase');
+    const domainParam = getParam('domain');
+    const emailParam = getParam('email');
+    const useCaseParam = getParam('usecase');
 
     if (domainParam) {
       const cleanDomain = domainParam.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
@@ -68,25 +70,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     }
 
     setIsInitialized(true);
-  }, [searchParams, isInitialized]);
-
-  const updateUrlParams = useCallback(
-    (params: Record<string, string>) => {
-      const newSearchParams = new URLSearchParams(searchParams.toString());
-
-      Object.entries(params).forEach(([key, value]) => {
-        if (value) {
-          newSearchParams.set(key, value);
-        } else {
-          newSearchParams.delete(key);
-        }
-      });
-
-      const queryString = newSearchParams.toString();
-      router.push(queryString ? `?${queryString}` : '/', { scroll: false });
-    },
-    [searchParams, router]
-  );
+  }, [getParam, isInitialized]);
 
   const setDomain = useCallback(
     (domain: string) => {
@@ -96,8 +80,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     [updateUrlParams]
   );
 
-  const setUrlError = useCallback((error: string) => {
-    setState((prev) => ({ ...prev, urlError: error }));
+  const setDomainError = useCallback((error: string) => {
+    setState((prev) => ({ ...prev, domainError: error }));
   }, []);
 
   const setUseCase = useCallback((useCase: string) => {
@@ -106,11 +90,11 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
 
   const resetState = useCallback(() => {
     setState(initialState);
-    router.push('/', { scroll: false });
-  }, [router]);
+    clearParams();
+  }, [clearParams]);
 
   const generateIntegration = useCallback(async () => {
-    if (!state.domain || !state.useCase || state.urlError) {
+    if (!state.domain || !state.useCase || state.domainError) {
       toast.error('Please fill in all required fields correctly');
       return;
     }
@@ -120,12 +104,13 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
       isLoading: true,
       showResults: false,
       companyContext: null,
+      scenarioResult: null,
     }));
 
     try {
       const domain = state.domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 
-      const { data, hasFullData } = await scrapeCompany(domain);
+      const { data: companyContext, hasFullData } = await scrapeCompany(domain);
 
       if (!hasFullData) {
         toast.warning('Could not extract full company details.', {
@@ -133,11 +118,16 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const scenarioResult = await generateScenario(companyContext, state.useCase);
+
+      if (!scenarioResult.success) {
+        throw new Error(scenarioResult.error || 'Failed to generate scenario');
+      }
 
       setState((prev) => ({
         ...prev,
-        companyContext: data,
+        companyContext,
+        scenarioResult: scenarioResult.data!,
         isLoading: false,
         showResults: true,
       }));
@@ -156,14 +146,14 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         duration: 5000,
       });
     }
-  }, [state.domain, state.useCase, state.urlError]);
+  }, [state.domain, state.useCase, state.domainError]);
 
   return (
     <IntegrationContext.Provider
       value={{
         ...state,
         setDomain,
-        setUrlError,
+        setDomainError,
         setUseCase,
         generateIntegration,
         resetState,

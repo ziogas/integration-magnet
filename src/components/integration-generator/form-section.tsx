@@ -12,22 +12,23 @@ import { cn } from '@/lib/utils';
 import { useIntegration } from '@/contexts/integration-context';
 
 export function FormSection() {
-  const { domain, setDomain, urlError, setUrlError, useCase, setUseCase, isLoading, generateIntegration } =
+  const { domain, setDomain, domainError, setDomainError, useCase, setUseCase, isLoading, generateIntegration } =
     useIntegration();
+
   const validateUrl = useCallback(
     (url: string) => {
       if (!url) {
-        setUrlError('');
+        setDomainError('');
         return true;
       }
 
       const domainPattern = /^([\da-z\.-]+)\.([a-z\.]{2,6})$/;
       const isValid = domainPattern.test(url);
 
-      setUrlError(isValid ? '' : 'Please enter a valid domain (e.g., example.com)');
+      setDomainError(isValid ? '' : 'Please enter a valid domain (e.g., example.com)');
       return isValid;
     },
-    [setUrlError]
+    [setDomainError]
   );
 
   const handleUrlChange = useCallback(
@@ -45,7 +46,7 @@ export function FormSection() {
     validateUrl(exampleDomain);
   }, [setDomain, validateUrl]);
 
-  const isFormValid = domain && useCase && !urlError && !isLoading;
+  const isFormValid = domain && useCase && !domainError && !isLoading;
 
   return (
     <Card className="bg-gradient-to-b from-gray-900/60 to-gray-900/40 backdrop-blur-xl border-gray-800/50 max-w-4xl p-8 mx-auto shadow-2xl">
@@ -66,14 +67,14 @@ export function FormSection() {
                 'pl-10 h-12 bg-gray-950/60 border-gray-700/50 text-gray-100',
                 'placeholder:text-gray-600 transition-all duration-200',
                 'hover:border-gray-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20',
-                urlError && 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20'
+                domainError && 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20'
               )}
             />
           </div>
-          {urlError && (
+          {domainError && (
             <div className="animate-in fade-in flex items-center gap-2 text-sm text-red-400 duration-200">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{urlError}</span>
+              <span>{domainError}</span>
             </div>
           )}
           <p className="text-xs text-gray-500">

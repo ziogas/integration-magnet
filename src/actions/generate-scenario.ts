@@ -1,17 +1,14 @@
 'use server';
 
-import { scrapeCompany } from './company-scraper';
 import { parseUseCase } from './use-case-parser';
 import { matchScenario } from './scenario-matcher';
-import type { ScenarioGenerationResult } from '@/types';
+import type { ScenarioGenerationResult, CompanyContext } from '@/types';
 
 export async function generateScenario(
-  domain: string,
+  companyContext: CompanyContext,
   useCase: string
 ): Promise<{ success: boolean; data?: ScenarioGenerationResult; error?: string }> {
   try {
-    const { data: companyContext } = await scrapeCompany(domain);
-
     const parsedUseCase = await parseUseCase(useCase, {
       name: companyContext.name,
       description: companyContext.description,

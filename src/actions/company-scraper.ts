@@ -1,6 +1,6 @@
 'use server';
 
-import FirecrawlApp from '@mendable/firecrawl-js';
+import { scrapeUrl, defaultScrapeParams } from '@/lib/firecrawl';
 import { CompanyContext } from '@/types';
 
 function extractCompanyName(domain: string, title?: string): string {
@@ -28,17 +28,15 @@ export async function scrapeCompany(domain: string): Promise<{ data: CompanyCont
   };
 
   if (!process.env.FIRECRAWL_API_KEY) {
-    console.warn('FIRECRAWL_API_KEY not found, using fallback data');
+    console.warn('FIRECRAWL_API_KEY not found');
     return { data: fallbackData, hasFullData: false };
   }
 
   try {
-    const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
-
-    const result = await firecrawl.scrape(url, {
-      formats: ['markdown', 'html'],
+    const result = await scrapeUrl(url, {
+      ...defaultScrapeParams,
+      formats: ['markdown'],
       includeTags: ['title', 'meta', 'h1', 'h2', 'p'],
-      waitFor: 0,
       timeout: 15000,
     });
 
