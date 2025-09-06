@@ -56,7 +56,7 @@ Building Blocks: ${scenario.buildingBlocks.join(', ')}
 
 Personalize this scenario specifically for ${companyContext.name} and their use case.`;
 
-    const result = await queryGpt(systemPrompt, userPrompt, PersonalizedScenarioSchema, 'gpt-4o-mini');
+    const result = await queryGpt(systemPrompt, userPrompt, PersonalizedScenarioSchema);
 
     return result;
   } catch (error) {

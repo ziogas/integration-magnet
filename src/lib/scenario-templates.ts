@@ -1,7 +1,6 @@
 import { ScenarioTemplate } from '@/types';
 
 export const scenarioTemplates: ScenarioTemplate[] = [
-  // Unified API Scenarios
   {
     id: 'unified-companies-sync',
     name: 'Unified Companies API Sync',
@@ -21,7 +20,6 @@ export const scenarioTemplates: ScenarioTemplate[] = [
     buildingBlocks: ['actions', 'data-collections', 'unified-data-models', 'field-mappings'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Sync companies from any CRM to your database
 const companies = await membrane.companies.list({
   provider: 'salesforce',
   filters: {
@@ -30,7 +28,6 @@ const companies = await membrane.companies.list({
   }
 });
 
-// Unified company model works across all providers
 companies.forEach(company => {
   await database.companies.upsert({
     id: company.id,
@@ -66,18 +63,14 @@ companies.forEach(company => {
     buildingBlocks: ['actions', 'events', 'data-collections', 'unified-data-models'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Listen for new contacts from any source
 membrane.contacts.on('created', async (contact) => {
-  // Enrich contact data
   const enriched = await membrane.enrichment.person(contact.email);
 
-  // Update across all connected systems
   await membrane.contacts.update(contact.id, {
     ...enriched,
     tags: ['prospect', 'high-value']
   });
 
-  // Trigger marketing automation
   await membrane.actions.trigger('welcome-sequence', { contact });
 });`,
     howItWorks: [
@@ -97,7 +90,6 @@ membrane.contacts.on('created', async (contact) => {
     buildingBlocks: ['actions', 'events', 'data-collections', 'field-mappings'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Unified invoice creation across platforms
 const invoice = await membrane.invoices.create({
   customer_id: 'cust_123',
   line_items: [
@@ -106,7 +98,6 @@ const invoice = await membrane.invoices.create({
   provider: 'stripe' // or 'quickbooks', 'xero', etc.
 });
 
-// Auto-sync to accounting system
 membrane.invoices.on('paid', async (invoice) => {
   await membrane.accounting.recordPayment({
     invoice_id: invoice.id,
@@ -122,7 +113,6 @@ membrane.invoices.on('paid', async (invoice) => {
     ],
   },
 
-  // Data Import/Export Scenarios
   {
     id: 'bulk-data-import',
     name: 'Bulk Data Import Pipeline',
@@ -133,7 +123,6 @@ membrane.invoices.on('paid', async (invoice) => {
     buildingBlocks: ['flows', 'data-collections', 'field-mappings'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Create data import flow
 const importFlow = membrane.flows.create({
   name: 'Customer Data Import',
   steps: [
@@ -181,12 +170,10 @@ await importFlow.run();`,
     buildingBlocks: ['flows', 'actions', 'data-collections'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Schedule daily export
 membrane.flows.schedule({
   name: 'Daily Sales Report',
   cron: '0 9 * * *', // 9 AM daily
   flow: async () => {
-    // Query data
     const sales = await membrane.data.query({
       collection: 'orders',
       filters: {
@@ -195,10 +182,8 @@ membrane.flows.schedule({
       }
     });
 
-    // Generate report
     const csv = membrane.transform.toCSV(sales);
 
-    // Send to multiple destinations
     await Promise.all([
       membrane.storage.upload('s3', 'reports/daily-sales.csv', csv),
       membrane.email.send({
@@ -218,7 +203,6 @@ membrane.flows.schedule({
     ],
   },
 
-  // Bi-directional Sync Scenarios
   {
     id: 'crm-helpdesk-sync',
     name: 'CRM & Help Desk Bi-directional Sync',
@@ -229,7 +213,6 @@ membrane.flows.schedule({
     buildingBlocks: ['events', 'actions', 'data-collections', 'field-mappings'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Bi-directional sync configuration
 membrane.sync.configure({
   source: 'salesforce',
   target: 'zendesk',
@@ -245,7 +228,6 @@ membrane.sync.configure({
   }
 });
 
-// Handle sync conflicts
 membrane.sync.on('conflict', async (conflict) => {
   const resolution = await membrane.ai.resolveConflict(conflict);
   return resolution;
@@ -267,7 +249,6 @@ membrane.sync.on('conflict', async (conflict) => {
     buildingBlocks: ['events', 'actions', 'flows', 'field-mappings'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Sync calendars across platforms
 membrane.calendars.sync({
   sources: ['google_calendar', 'outlook', 'calendly'],
   rules: {
@@ -277,7 +258,6 @@ membrane.calendars.sync({
   }
 });
 
-// Auto-create meeting links
 membrane.calendars.on('event.created', async (event) => {
   if (event.type === 'meeting') {
     const zoomLink = await membrane.zoom.createMeeting({
@@ -300,7 +280,6 @@ membrane.calendars.on('event.created', async (event) => {
     ],
   },
 
-  // Workflow Automation Scenarios
   {
     id: 'lead-routing-automation',
     name: 'Intelligent Lead Routing Workflow',
@@ -311,7 +290,6 @@ membrane.calendars.on('event.created', async (event) => {
     buildingBlocks: ['flows', 'actions', 'events'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// AI-powered lead routing
 membrane.flows.create({
   name: 'Smart Lead Router',
   trigger: 'lead.created',
@@ -358,7 +336,6 @@ membrane.flows.create({
     buildingBlocks: ['flows', 'actions', 'events', 'data-collections'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Customer onboarding orchestration
 membrane.flows.create({
   name: 'Customer Onboarding',
   trigger: 'payment.succeeded',
@@ -399,7 +376,6 @@ membrane.flows.create({
     ],
   },
 
-  // Event-Driven Scenarios
   {
     id: 'webhook-processor',
     name: 'Intelligent Webhook Event Processor',
@@ -410,7 +386,6 @@ membrane.flows.create({
     buildingBlocks: ['events', 'flows', 'actions', 'data-collections'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Webhook processing pipeline
 membrane.webhooks.create({
   endpoint: '/hooks/process',
   processors: {
@@ -465,7 +440,6 @@ membrane.webhooks.create({
     buildingBlocks: ['events', 'flows', 'actions'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Multi-channel alert configuration
 membrane.alerts.configure({
   rules: [
     {
@@ -508,7 +482,6 @@ membrane.alerts.configure({
     ],
   },
 
-  // Data Transformation Scenarios
   {
     id: 'etl-pipeline',
     name: 'ETL Data Pipeline',
@@ -519,7 +492,6 @@ membrane.alerts.configure({
     buildingBlocks: ['flows', 'data-collections', 'field-mappings'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// ETL pipeline configuration
 const pipeline = membrane.pipeline.create({
   name: 'Sales Analytics ETL',
   schedule: '*/15 * * * *', // Every 15 minutes
@@ -585,24 +557,20 @@ const pipeline = membrane.pipeline.create({
     buildingBlocks: ['field-mappings', 'data-collections', 'actions'],
     codeExample: `const membrane = require('@membrane/sdk');
 
-// Advanced field mapping configuration
 membrane.mapping.create({
   name: 'CRM to ERP Sync',
   source: 'salesforce',
   target: 'sap',
 
   mappings: [
-    // Simple field mapping
     { from: 'Account.Name', to: 'Customer.CompanyName' },
 
-    // Transformation functions
     {
       from: 'Account.AnnualRevenue',
       to: 'Customer.Revenue',
       transform: (value) => value * 1.1 // Add 10% markup
     },
 
-    // Conditional mapping
     {
       from: 'Account.Type',
       to: 'Customer.Category',
@@ -615,7 +583,6 @@ membrane.mapping.create({
       }
     },
 
-    // Computed fields
     {
       to: 'Customer.CreditLimit',
       compute: (record) => {
@@ -625,7 +592,6 @@ membrane.mapping.create({
       }
     },
 
-    // Nested object mapping
     {
       from: 'Contact[]',
       to: 'Customer.Contacts[]',

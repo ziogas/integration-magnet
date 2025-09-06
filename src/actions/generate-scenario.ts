@@ -2,6 +2,7 @@
 
 import { parseUseCase } from './use-case-parser';
 import { matchScenario } from './scenario-matcher';
+import { getApplicationLogoUrl } from '@/lib/logo-api';
 import type { ScenarioGenerationResult, CompanyContext } from '@/types';
 
 export async function generateScenario(
@@ -28,12 +29,7 @@ export async function generateScenario(
 
     const { scenario, confidence, personalizedDescription, codeSnippet } = matchResult;
 
-    const applicationLogos = scenario.supportedApps
-      .slice(0, 8)
-      .map(
-        (app) =>
-          `https://logo.dev/${app.toLowerCase().replace(/\s+/g, '')}.com?token=${process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY}`
-      );
+    const applicationLogos = scenario.supportedApps.slice(0, 8).map((app) => getApplicationLogoUrl(app));
 
     const result: ScenarioGenerationResult = {
       companyContext,

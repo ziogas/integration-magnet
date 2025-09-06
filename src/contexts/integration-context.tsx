@@ -5,7 +5,7 @@ import { useUrlParams } from '@/hooks/use-url-params';
 import { toast } from 'sonner';
 import type { CompanyContext, ScenarioGenerationResult } from '@/types';
 import { EXAMPLE_PROMPTS } from '@/components/integration-generator/constants';
-import { scrapeCompany } from '@/actions/company-scraper';
+import { scrapeCompanyDetails } from '@/actions/company-scraper';
 import { generateScenario } from '@/actions/generate-scenario';
 
 type IntegrationState = {
@@ -110,7 +110,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     try {
       const domain = state.domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 
-      const { data: companyContext, hasFullData } = await scrapeCompany(domain);
+      const { data: companyContext, hasFullData } = await scrapeCompanyDetails(domain);
 
       if (!hasFullData) {
         toast.warning('Could not extract full company details.', {

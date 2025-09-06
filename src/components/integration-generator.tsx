@@ -1,12 +1,14 @@
 'use client';
 
-import { IntegrationProvider } from '@/contexts/integration-context';
+import { IntegrationProvider, useIntegration } from '@/contexts/integration-context';
 import { HeroSection } from './integration-generator/hero-section';
 import { FormSection } from './integration-generator/form-section';
 import { LoadingState } from './integration-generator/loading-state';
 import { ResultsSection } from './integration-generator/results-section';
 
 function IntegrationGeneratorContent() {
+  const { showResults, isLoading } = useIntegration();
+
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-[hsl(222,47%,11%)] via-[hsl(222,47%,9%)] to-[hsl(217,33%,12%)]" />
@@ -20,9 +22,11 @@ function IntegrationGeneratorContent() {
 
       <div className="max-w-7xl lg:px-8 lg:py-20 relative z-10 px-6 py-16 mx-auto">
         <HeroSection />
-        <div className="mt-16">
-          <FormSection />
-        </div>
+        {!showResults && !isLoading && (
+          <div className="mt-16">
+            <FormSection />
+          </div>
+        )}
         <LoadingState />
         <ResultsSection />
       </div>

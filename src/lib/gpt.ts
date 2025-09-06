@@ -11,20 +11,17 @@ export async function queryGpt<T extends z.ZodSchema>(
   systemPrompt: string,
   userPrompt: string,
   outputSchema: T,
-  model: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming['model'] = 'gpt-4.1'
+  model: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming['model'] = 'gpt-5-mini'
 ): Promise<z.infer<T>> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OpenAI API key is not configured');
   }
-
-  const temperature = model.startsWith('o') ? 1 : 0.7;
 
   try {
     const gptResponse = await openaiClient.chat.completions
       .parse(
         {
           model,
-          temperature,
           messages: [
             {
               role: 'system',

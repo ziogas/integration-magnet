@@ -56,7 +56,7 @@ ${scenario.codeExample}
 Generate Membrane SDK code specifically for ${companyContext.name}'s use case.
 Adapt the template to use their actual systems and entities.`;
 
-    const result = await queryGpt(systemPrompt, userPrompt, GeneratedCodeSchema, 'gpt-4o-mini');
+    const result = await queryGpt(systemPrompt, userPrompt, GeneratedCodeSchema);
 
     return result;
   } catch (error) {

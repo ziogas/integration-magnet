@@ -1,4 +1,3 @@
-// Company and Use Case Types
 export type CompanyContext = {
   url: string;
   domain: string;
@@ -13,12 +12,11 @@ export type ParsedUseCase = {
   description: string;
   entities: string[];
   actions: string[];
-  sourceSystem?: string;
-  destinationSystem?: string;
-  integrationType?: 'sync' | 'trigger' | 'action' | 'bidirectional' | 'import' | 'export';
+  sourceSystem?: string | null;
+  destinationSystem?: string | null;
+  integrationType?: 'sync' | 'trigger' | 'action' | 'bidirectional' | 'import' | 'export' | null;
 };
 
-// Scenario Template Types
 export type ScenarioCategory =
   | 'unified-api'
   | 'data-import-export'
@@ -49,7 +47,6 @@ export type ScenarioTemplate = {
   confidence?: number;
 };
 
-// API Response Types
 export type OpenAIResponse = {
   parsedUseCase?: ParsedUseCase;
   matchedScenario?: ScenarioTemplate;
@@ -68,7 +65,6 @@ export type ScenarioGenerationResult = {
   confidence: number;
 };
 
-// Form Types
 export type FormData = {
   domain: string;
   useCase: string;
@@ -76,7 +72,6 @@ export type FormData = {
   gdprConsent?: boolean;
 };
 
-// Lead Types
 export type Lead = {
   email: string;
   domain: string;
@@ -89,14 +84,12 @@ export type Lead = {
   utmCampaign?: string;
 };
 
-// Analytics Event Types
 export type AnalyticsEvent = {
   name: string;
   properties: Record<string, unknown>;
   timestamp: Date;
 };
 
-// Error Types
 export type AppError = {
   code: string;
   message: string;

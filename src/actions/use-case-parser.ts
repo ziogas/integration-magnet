@@ -8,9 +8,9 @@ const ParsedUseCaseSchema = z.object({
   description: z.string(),
   entities: z.array(z.string()),
   actions: z.array(z.string()),
-  sourceSystem: z.string().optional(),
-  destinationSystem: z.string().optional(),
-  integrationType: z.enum(['sync', 'trigger', 'action', 'bidirectional', 'import', 'export']).optional(),
+  sourceSystem: z.string().nullable().optional(),
+  destinationSystem: z.string().nullable().optional(),
+  integrationType: z.enum(['sync', 'trigger', 'action', 'bidirectional', 'import', 'export']).nullable().optional(),
 });
 
 export async function parseUseCase(
@@ -42,7 +42,7 @@ Use-case description: ${useCase}
 
 Extract the key integration requirements from this use-case.`;
 
-    const result = await queryGpt(systemPrompt, userPrompt, ParsedUseCaseSchema, 'gpt-4o-mini');
+    const result = await queryGpt(systemPrompt, userPrompt, ParsedUseCaseSchema);
 
     return result;
   } catch (error) {

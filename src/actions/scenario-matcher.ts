@@ -12,7 +12,7 @@ const MatchedScenarioSchema = z.object({
   customizedCodeSnippet: z.string(),
   reasoning: z.string(),
   suggestedApps: z.array(z.string()),
-  fallbackReason: z.string().optional(),
+  fallbackReason: z.string().nullable().optional(),
 });
 
 const GeneratedScenarioSchema = z.object({
@@ -71,7 +71,10 @@ When personalizing:
 - Replace generic terms with company-specific names
 - Adjust the code example to reflect their specific use case
 - Keep the core Membrane SDK patterns intact
-- Focus on their mentioned systems and entities`;
+- Focus on their mentioned systems and entities
+
+Available Membrane Scenario Templates:
+${JSON.stringify(scenarioSummaries, null, 2)}`;
 
     const userPrompt = `Company: ${companyContext?.name || 'Your Company'}
 ${companyContext?.description ? `Description: ${companyContext.description}` : ''}
@@ -84,12 +87,9 @@ ${parsedUseCase.sourceSystem ? `Source System: ${parsedUseCase.sourceSystem}` : 
 ${parsedUseCase.destinationSystem ? `Destination System: ${parsedUseCase.destinationSystem}` : ''}
 ${parsedUseCase.integrationType ? `Integration Type: ${parsedUseCase.integrationType}` : ''}
 
-Available Scenarios:
-${JSON.stringify(scenarioSummaries, null, 2)}
+Select the best matching scenario from the available templates and customize it for this company and use case.`;
 
-Select the best matching scenario and customize it for this company and use case.`;
-
-    const result = await queryGpt(systemPrompt, userPrompt, MatchedScenarioSchema, 'gpt-4o-mini');
+    const result = await queryGpt(systemPrompt, userPrompt, MatchedScenarioSchema);
 
     if (!result.scenarioId || result.confidence < 30) {
       return await generateCustomScenario(parsedUseCase, companyContext);
@@ -154,7 +154,7 @@ ${parsedUseCase.integrationType ? `Integration Type: ${parsedUseCase.integration
 
 Generate a custom Membrane integration scenario for this specific use case.`;
 
-    const generatedScenario = await queryGpt(systemPrompt, userPrompt, GeneratedScenarioSchema, 'gpt-4o-mini');
+    const generatedScenario = await queryGpt(systemPrompt, userPrompt, GeneratedScenarioSchema);
 
     const categoryMap: Record<string, ScenarioTemplate['category']> = {
       'unified-api': 'unified-api',
@@ -238,21 +238,17 @@ Generate a custom Membrane integration scenario for this specific use case.`;
       buildingBlocks: ['actions', 'flows'],
       codeExample: `const membrane = require('@membrane/sdk');
 
-// Custom integration for ${companyContext?.name || 'your company'}
 const integration = membrane.integration({
   name: 'Custom Integration',
   description: '${parsedUseCase.description}',
 });
 
-// Connect to your systems
 integration.connect({
   source: '${parsedUseCase.sourceSystem || 'source_system'}',
   destination: '${parsedUseCase.destinationSystem || 'destination_system'}',
 });
 
-// Process your data
 integration.on('data', async (data) => {
-  // Custom logic here
   const processed = await processData(data);
   await integration.send(processed);
 });
