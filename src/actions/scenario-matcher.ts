@@ -3,7 +3,91 @@
 import { z } from 'zod';
 import { queryGpt } from '@/lib/gpt';
 import { scenarioTemplates } from '@/lib/scenario-templates';
-import { ParsedUseCase, ScenarioTemplate, BuildingBlock } from '@/types';
+import { ParsedUseCase, ScenarioTemplate, BuildingBlock, ScenarioCategory } from '@/types';
+
+function mapToValidCategory(category: string): ScenarioCategory {
+  const categoryMap: Record<string, ScenarioCategory> = {
+    'unified-api': 'unified-api',
+    'data-import-export': 'data-import-export',
+    'bi-directional-sync': 'bi-directional-sync',
+    'workflow-automation': 'workflow-automation',
+    'webhook-events': 'webhook-events',
+    'data-transformation': 'data-transformation',
+    unified: 'unified-api',
+    import: 'data-import-export',
+    export: 'data-import-export',
+    sync: 'bi-directional-sync',
+    bidirectional: 'bi-directional-sync',
+    workflow: 'workflow-automation',
+    automation: 'workflow-automation',
+    webhook: 'webhook-events',
+    event: 'webhook-events',
+    etl: 'data-transformation',
+    transform: 'data-transformation',
+    transformation: 'data-transformation',
+  };
+
+  const normalized = category.toLowerCase().replace(/[_\s-]/g, '');
+
+  for (const [key, value] of Object.entries(categoryMap)) {
+    if (normalized.includes(key)) {
+      return value;
+    }
+  }
+
+  return 'workflow-automation';
+}
+
+function validateAndMapBuildingBlocks(blocks: string[]): BuildingBlock[] {
+  const validBlocks: BuildingBlock[] = [
+    'actions',
+    'events',
+    'flows',
+    'data-collections',
+    'unified-data-models',
+    'field-mappings',
+  ];
+
+  const blockMap: Record<string, BuildingBlock> = {
+    actions: 'actions',
+    action: 'actions',
+    events: 'events',
+    event: 'events',
+    flows: 'flows',
+    flow: 'flows',
+    datacollections: 'data-collections',
+    datacollection: 'data-collections',
+    collections: 'data-collections',
+    unifieddatamodels: 'unified-data-models',
+    unifiedmodels: 'unified-data-models',
+    datamodels: 'unified-data-models',
+    fieldmappings: 'field-mappings',
+    fieldmapping: 'field-mappings',
+    mappings: 'field-mappings',
+  };
+
+  const result: BuildingBlock[] = [];
+  const seen = new Set<BuildingBlock>();
+
+  for (const block of blocks) {
+    const normalized = block.toLowerCase().replace(/[_\s-]/g, '');
+    const mapped = blockMap[normalized];
+
+    if (mapped && !seen.has(mapped)) {
+      result.push(mapped);
+      seen.add(mapped);
+    } else if (validBlocks.includes(block as BuildingBlock) && !seen.has(block as BuildingBlock)) {
+      result.push(block as BuildingBlock);
+      seen.add(block as BuildingBlock);
+    }
+  }
+
+  if (result.length === 0) {
+    result.push('actions');
+  }
+
+  return result;
+}
 
 const MatchedScenarioSchema = z.object({
   scenarioId: z.string().nullable(),
@@ -24,6 +108,13 @@ const GeneratedScenarioSchema = z.object({
   buildingBlocks: z.array(z.string()),
   codeExample: z.string(),
   howItWorks: z.array(z.string()).min(3).max(4),
+  initialSyncSteps: z.array(z.string()).optional(),
+  continuousSyncDetails: z
+    .object({
+      fromExternal: z.string().optional(),
+      toExternal: z.string().optional(),
+    })
+    .optional(),
 });
 
 export async function matchScenario(
@@ -67,11 +158,14 @@ Confidence scoring guidelines:
 
 If confidence is below 30, return null for scenarioId and explain why in fallbackReason.
 
-When personalizing:
-- Replace generic terms with company-specific names
-- Adjust the code example to reflect their specific use case
-- Keep the core Membrane SDK patterns intact
-- Focus on their mentioned systems and entities
+When personalizing the code:
+- Show initial sync with pagination: membrane.sync.initial({ pageSize: 100 })
+- Include webhook subscription setup for real-time events
+- Demonstrate field mapping transformations
+- Show event handlers for created/updated/deleted operations
+- Use actual company systems and entities mentioned
+- Include error handling and retry logic
+- Keep code practical and implementation-ready
 
 Available Membrane Scenario Templates:
 ${JSON.stringify(scenarioSummaries, null, 2)}`;
@@ -134,12 +228,20 @@ Create a completely custom scenario based on the user's specific needs.
 The scenario should:
 1. Have a clear, descriptive name
 2. Include relevant keywords and supported applications
-3. Select appropriate building blocks
-4. Provide working Membrane SDK code example
-5. Include 3-4 clear "how it works" steps
+3. Select appropriate building blocks from: actions, events, flows, data-collections, unified-data-models, field-mappings
+4. Provide production-ready Membrane SDK code example
+5. Include 3-4 technical "how it works" steps following this pattern:
+   - Initial Sync: How data is imported/exported initially
+   - Continuous Sync (External): How updates from external apps are received
+   - Continuous Sync (Your App): How your app sends updates
+   - Data Transformation: How field mapping and validation works
 
-Focus on making it specific to their use case while showcasing Membrane's capabilities.
-Use actual application names they mentioned or suggest relevant ones.`;
+Code should demonstrate:
+- Pagination for initial data sync
+- Webhook/event subscription setup
+- Field mapping and transformation
+- Error handling and retries
+- Real-time vs batch processing options`;
 
     const userPrompt = `Company: ${companyContext?.name || 'Your Company'}
 ${companyContext?.description ? `Description: ${companyContext.description}` : ''}
@@ -156,54 +258,9 @@ Generate a custom Membrane integration scenario for this specific use case.`;
 
     const generatedScenario = await queryGpt(systemPrompt, userPrompt, GeneratedScenarioSchema);
 
-    const categoryMap: Record<string, ScenarioTemplate['category']> = {
-      'unified-api': 'unified-api',
-      'data-import-export': 'data-import-export',
-      'bi-directional-sync': 'bi-directional-sync',
-      'workflow-automation': 'workflow-automation',
-      'webhook-events': 'webhook-events',
-      'data-transformation': 'data-transformation',
-      unified: 'unified-api',
-      import: 'data-import-export',
-      export: 'data-import-export',
-      sync: 'bi-directional-sync',
-      workflow: 'workflow-automation',
-      webhook: 'webhook-events',
-      event: 'webhook-events',
-      etl: 'data-transformation',
-      transform: 'data-transformation',
-    };
+    const mappedCategory = mapToValidCategory(generatedScenario.category);
 
-    const genCategoryLower = generatedScenario.category.toLowerCase();
-    let mappedCategory: ScenarioTemplate['category'] = 'workflow-automation';
-
-    for (const [key, value] of Object.entries(categoryMap)) {
-      if (genCategoryLower.includes(key)) {
-        mappedCategory = value;
-        break;
-      }
-    }
-
-    const blockMap: Record<string, BuildingBlock> = {
-      actions: 'actions',
-      events: 'events',
-      flows: 'flows',
-      datacollections: 'data-collections',
-      unifieddatamodels: 'unified-data-models',
-      fieldmappings: 'field-mappings',
-    };
-
-    const filteredBlocks: BuildingBlock[] = [];
-    for (const block of generatedScenario.buildingBlocks) {
-      const normalized = block.toLowerCase().replace(/[_\s-]/g, '');
-      if (blockMap[normalized]) {
-        filteredBlocks.push(blockMap[normalized]);
-      }
-    }
-
-    if (filteredBlocks.length === 0) {
-      filteredBlocks.push('actions');
-    }
+    const filteredBlocks = validateAndMapBuildingBlocks(generatedScenario.buildingBlocks);
 
     const customScenario: ScenarioTemplate = {
       id: `custom-generated-${Date.now()}`,

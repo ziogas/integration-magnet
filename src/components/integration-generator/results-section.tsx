@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,9 +15,13 @@ import {
   Database,
   Layers,
   Link,
-  Copy,
-  Check,
   ArrowLeft,
+  Clock,
+  Shield,
+  Cpu,
+  ArrowRight,
+  CheckCircle2,
+  Server,
   type LucideIcon,
 } from 'lucide-react';
 import { CodeBlock, CodeBlockCopyButton } from '@/components/ai-elements/code-block';
@@ -27,6 +30,64 @@ import { getCompanyLogoUrl, getApplicationLogoUrl } from '@/lib/logo-api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
+import type { ReactNode } from 'react';
+
+type CompanyContext = {
+  name: string;
+  domain: string;
+  description?: string;
+  industry?: string;
+};
+
+type ScenarioResult = {
+  confidence: number;
+  personalizedDescription?: string;
+  applicationLogos?: string[];
+  codeSnippet?: string;
+  jsonSpec?: Record<string, unknown>;
+  matchedScenario: {
+    name: string;
+    description: string;
+    category: string;
+    supportedApps: string[];
+    howItWorks: string[];
+    buildingBlocks: string[];
+    codeExample: string;
+    jsonSpec: Record<string, unknown>;
+  };
+};
+
+type SectionCardProps = {
+  title: string;
+  headerAction?: ReactNode;
+  gradient?: string;
+  children: ReactNode;
+  className?: string;
+};
+
+function SectionCard({
+  title,
+  headerAction,
+  gradient = 'bg-gradient-to-r from-purple-900/20 to-blue-900/20',
+  children,
+  className,
+}: SectionCardProps) {
+  return (
+    <Card className={cn('bg-gray-900/50 backdrop-blur-xl pt-0 overflow-hidden border-gray-800', className)}>
+      <div className={cn('px-4 py-3 sm:px-6 sm:py-4 md:px-8 md:py-6 border-b border-gray-800', gradient)}>
+        {headerAction ? (
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="sm:text-xl md:text-2xl text-lg font-semibold text-white">{title}</h2>
+            {headerAction}
+          </div>
+        ) : (
+          <h2 className="sm:text-xl md:text-2xl text-lg font-semibold text-white">{title}</h2>
+        )}
+      </div>
+      <div className="md:px-8 px-4 py-2">{children}</div>
+    </Card>
+  );
+}
 
 type ApplicationLogoProps =
   | {
@@ -39,23 +100,20 @@ type ApplicationLogoProps =
     };
 
 function ApplicationLogo({ appName, logoUrl }: ApplicationLogoProps) {
+  if (!appName && !logoUrl) {
+    return null;
+  }
+
   const imageUrl = logoUrl || getApplicationLogoUrl(appName || '');
 
   return (
-    <div className="group relative">
-      <div
-        className={cn(
-          'bg-gray-800/50 backdrop-blur-sm rounded-xl p-3 transition-all duration-200 border border-gray-700',
-          'hover:border-purple-700 hover:scale-105 hover:bg-gray-800/70'
-        )}
-      >
-        <img
-          src={imageUrl}
-          alt={`${appName} logo`}
-          className="filter brightness-90 group-hover:brightness-100 object-contain w-full h-12 transition-all"
-          onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
-        />
-      </div>
+    <>
+      <img
+        src={imageUrl}
+        alt={`${appName} logo`}
+        className="filter brightness-90 group-hover:brightness-100 rounded-xl h-12 transition-all"
+        onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
+      />
       {appName && (
         <div
           className={cn(
@@ -67,7 +125,7 @@ function ApplicationLogo({ appName, logoUrl }: ApplicationLogoProps) {
           <p className="py-1 text-xs font-medium text-center text-white capitalize">{appName}</p>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -120,10 +178,10 @@ function BuildingBlockCard({ blockType, isActive }: { blockType: BuildingBlockTy
   const Icon = config.icon;
 
   return (
-    <div className={cn('relative group', !isActive && 'opacity-60')}>
+    <div className={cn('relative group', !isActive && 'opacity-60 hidden md:block')}>
       <div
         className={cn(
-          'bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 border transition-all duration-300',
+          'bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 sm:p-5 md:p-6 border transition-all duration-300',
           isActive
             ? 'border-purple-700/50 bg-gradient-to-br from-purple-900/20 to-blue-900/20'
             : 'border-gray-700/50 hover:border-gray-600'
@@ -138,8 +196,10 @@ function BuildingBlockCard({ blockType, isActive }: { blockType: BuildingBlockTy
         >
           <Icon className="w-6 h-6 text-white" />
         </div>
-        <h4 className={cn('font-semibold mb-2', isActive ? 'text-white' : 'text-gray-300')}>{config.title}</h4>
-        <p className="text-sm leading-relaxed text-gray-400">{config.description}</p>
+        <h4 className={cn('font-semibold mb-2 text-sm sm:text-base', isActive ? 'text-white' : 'text-gray-300')}>
+          {config.title}
+        </h4>
+        <p className="sm:text-sm text-xs leading-relaxed text-gray-400">{config.description}</p>
         {isActive && (
           <div className="top-3 right-3 absolute">
             <div className="animate-pulse w-2 h-2 bg-green-500 rounded-full" />
@@ -150,348 +210,475 @@ function BuildingBlockCard({ blockType, isActive }: { blockType: BuildingBlockTy
   );
 }
 
-export function ResultsSection() {
-  const { showResults, companyContext, scenarioResult, resetState } = useIntegration();
-  const [copiedScenario, setCopiedScenario] = useState(false);
-
-  if (!showResults || !companyContext) return null;
-
+function CompanyContextCard({ companyContext }: { companyContext: CompanyContext }) {
   const logoUrl = getCompanyLogoUrl(companyContext.domain);
 
   return (
-    <div className="max-w-5xl mx-auto mt-16 space-y-8">
+    <SectionCard title="Company Context">
+      <div className="sm:flex-row sm:items-start sm:gap-6 flex flex-col items-center gap-4">
+        <div className="flex-shrink-0">
+          <img
+            src={logoUrl}
+            alt={`${companyContext.name} logo`}
+            className="rounded-xl bg-white/5 sm:w-20 sm:h-20 object-contain w-16 h-16"
+          />
+        </div>
+        <div className="sm:text-left flex-1 text-center">
+          <h3 className="sm:text-2xl mb-2 text-xl font-bold text-white">{companyContext.name}</h3>
+          {companyContext.description ? (
+            <p className="mb-4 leading-relaxed text-gray-300">{companyContext.description}</p>
+          ) : (
+            <p className="mb-4 italic text-gray-500">
+              Company description not available. Using domain information only.
+            </p>
+          )}
+          <div className="sm:justify-start sm:gap-3 flex flex-wrap items-center justify-center gap-2">
+            <Badge
+              variant="secondary"
+              className="bg-purple-950/50 sm:px-3 sm:text-sm px-2 py-1 text-xs text-purple-200 border-purple-800"
+            >
+              <Globe className="w-3 h-3 mr-1 sm:mr-1.5" />
+              {companyContext.domain}
+            </Badge>
+            {companyContext.industry && (
+              <Badge
+                variant="secondary"
+                className="bg-blue-950/50 sm:px-3 sm:text-sm px-2 py-1 text-xs text-blue-200 border-blue-800"
+              >
+                {companyContext.industry}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+function SupportedApplicationsCard({ scenarioResult }: { scenarioResult: ScenarioResult }) {
+  const headerAction = (
+    <Badge
+      variant="secondary"
+      className={cn(
+        'px-2 sm:px-3 py-1 text-xs sm:text-sm text-purple-200',
+        'bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-purple-800/50'
+      )}
+    >
+      <Sparkles className="w-3 h-3 mr-1 sm:mr-1.5" />
+      <span className="sm:inline hidden">
+        {scenarioResult.applicationLogos?.length || scenarioResult.matchedScenario.supportedApps.length}+ Integrations
+      </span>
+      <span className="sm:hidden">
+        {scenarioResult.applicationLogos?.length || scenarioResult.matchedScenario.supportedApps.length}+
+      </span>
+    </Badge>
+  );
+
+  return (
+    <SectionCard title="Supported Applications" headerAction={headerAction}>
+      <p className="sm:text-left sm:mb-8 sm:text-base mb-6 text-sm text-center text-gray-300">
+        This scenario seamlessly connects with these popular applications and many more:
+      </p>
+      <div className="sm:gap-4 flex flex-wrap justify-center gap-3">
+        {(scenarioResult.applicationLogos || scenarioResult.matchedScenario.supportedApps.slice(0, 10)).map(
+          (logoUrl: string, index: number) => (
+            <ApplicationLogo key={index} logoUrl={logoUrl} />
+          )
+        )}
+      </div>
+      <div className="sm:pt-6 sm:mt-6 pt-4 mt-4 border-t border-gray-800">
+        <p className="sm:text-left sm:text-sm text-xs text-center text-gray-500">
+          Plus 3,289+ more integrations available through Membrane's AI-powered connector builder
+        </p>
+      </div>
+    </SectionCard>
+  );
+}
+
+export function ResultsSection() {
+  const { showResults, companyContext, scenarioResult, resetState } = useIntegration() as {
+    showResults: boolean;
+    companyContext: CompanyContext | null;
+    scenarioResult: ScenarioResult | null;
+    resetState: () => void;
+  };
+
+  if (!showResults || !companyContext) return null;
+
+  return (
+    <div className="sm:mt-12 md:mt-16 sm:space-y-8 max-w-6xl mx-auto mt-8 space-y-6">
       <div className="flex justify-start">
-        <Button onClick={resetState} variant="ghost">
-          <ArrowLeft className="w-4 h-4" />
-          New Integration
+        <Button onClick={resetState} variant="ghost" className="sm:text-base text-sm">
+          <ArrowLeft className="sm:w-4 sm:h-4 w-3 h-3" />
+          <span className="sm:inline hidden">New Integration</span>
+          <span className="sm:hidden">Back</span>
         </Button>
       </div>
 
-      <Card className="bg-gray-900/50 backdrop-blur-xl pt-0 overflow-hidden border-gray-800">
-        <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 px-8 py-6 border-b border-gray-800">
-          <h2 className="text-2xl font-semibold text-white">Company Context</h2>
-        </div>
-        <div className="p-8">
-          <div className="flex items-start gap-6">
-            <div className="flex-shrink-0">
-              <img
-                src={logoUrl}
-                alt={`${companyContext.name} logo`}
-                className="rounded-xl bg-white/5 object-contain w-20 h-20 p-3"
-              />
-            </div>
-            <div className="flex-1">
-              <h3 className="mb-2 text-2xl font-bold text-white">{companyContext.name}</h3>
-              {companyContext.description ? (
-                <p className="mb-4 leading-relaxed text-gray-300">{companyContext.description}</p>
-              ) : (
-                <p className="mb-4 italic text-gray-500">
-                  Company description not available. Using domain information only.
-                </p>
-              )}
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary" className="bg-purple-950/50 px-3 py-1 text-purple-200 border-purple-800">
-                  <Globe className="w-3 h-3 mr-1.5" />
-                  {companyContext.domain}
-                </Badge>
-                {companyContext.industry && (
-                  <Badge variant="secondary" className="bg-blue-950/50 px-3 py-1 text-blue-200 border-blue-800">
-                    {companyContext.industry}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <div className="sm:space-y-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0 space-y-6">
+        <CompanyContextCard companyContext={companyContext} />
+
+        {scenarioResult && <SupportedApplicationsCard scenarioResult={scenarioResult} />}
+      </div>
 
       {scenarioResult && (
         <>
-          <Card className="bg-gray-900/50 backdrop-blur-xl pt-0 overflow-hidden border-gray-800">
-            <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 px-8 py-6 border-b border-gray-800">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold text-white">Matched Scenario</h2>
-                <Badge
-                  variant="default"
-                  className={cn(
-                    'px-4 py-1.5 text-sm font-semibold',
-                    scenarioResult.confidence >= 90
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                      : scenarioResult.confidence >= 70
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500'
-                        : 'bg-gradient-to-r from-yellow-500 to-orange-500'
-                  )}
-                >
-                  {scenarioResult.confidence}% Match
-                </Badge>
-              </div>
-            </div>
-            <div className="p-8">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-2xl font-bold text-white">{scenarioResult.matchedScenario.name}</h3>
-                <button
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(scenarioResult.matchedScenario.name);
-                      setCopiedScenario(true);
-                      toast.success('Scenario name copied!', { duration: 2000 });
-                      setTimeout(() => setCopiedScenario(false), 2000);
-                    } catch {
-                      toast.error('Failed to copy scenario name');
-                    }
-                  }}
-                  className={cn(
-                    'p-2 text-gray-400 rounded-lg transition-all duration-200',
-                    'bg-gray-800/50 hover:bg-gray-700/50 hover:text-gray-200 hover:scale-110'
-                  )}
-                  title="Copy scenario name"
-                >
-                  {copiedScenario ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-              <p className="mb-6 leading-relaxed text-gray-300">
-                {scenarioResult.personalizedDescription || scenarioResult.matchedScenario.description}
-              </p>
-
-              <div className="bg-gray-800/30 rounded-xl p-6 mb-6">
-                <h4 className="mb-4 text-lg font-semibold text-white">How It Works</h4>
-                <div className="space-y-3">
-                  {scenarioResult.matchedScenario.howItWorks.map((step, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          'w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center',
-                          'bg-gradient-to-r from-purple-500 to-blue-500'
-                        )}
-                      >
-                        <span className="text-xs font-bold text-white">{index + 1}</span>
-                      </div>
-                      <p className="leading-relaxed text-gray-300">{step}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="text-purple-300 border-purple-800">
-                  {scenarioResult.matchedScenario.category.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                </Badge>
-                {scenarioResult.matchedScenario.buildingBlocks.slice(0, 3).map((block) => (
-                  <Badge key={block} variant="outline" className="text-blue-300 border-blue-800">
-                    {block.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </Card>
-
-          <Card className="bg-gray-900/50 backdrop-blur-xl pt-0 overflow-hidden border-gray-800">
-            <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 px-8 py-6 border-b border-gray-800">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold text-white">Supported Applications</h2>
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    'px-3 py-1 text-purple-200',
-                    'bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-purple-800/50'
-                  )}
-                >
-                  <Sparkles className="w-3 h-3 mr-1.5" />
-                  {scenarioResult.applicationLogos?.length || scenarioResult.matchedScenario.supportedApps.length}+
-                  Integrations
-                </Badge>
-              </div>
-            </div>
-            <div className="p-8">
-              <p className="mb-6 text-gray-300">
-                This scenario seamlessly connects with these popular applications and many more:
-              </p>
-              <div className="sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 grid grid-cols-4 gap-4">
-                {(scenarioResult.applicationLogos || scenarioResult.matchedScenario.supportedApps.slice(0, 10)).map(
-                  (logoUrl, index) => (
-                    <ApplicationLogo key={index} logoUrl={logoUrl} />
-                  )
-                )}
-              </div>
-              <div className="pt-6 mt-6 border-t border-gray-800">
-                <p className="text-sm text-gray-500">
-                  Plus 3,289+ more integrations available through Membrane's AI-powered connector builder
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="bg-gray-900/50 backdrop-blur-xl pt-0 overflow-hidden border-gray-800">
-            <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 px-8 py-6 border-b border-gray-800">
-              <h2 className="text-2xl font-semibold text-white">Implementation</h2>
-            </div>
-            <div className="p-8">
-              <Tabs defaultValue="membrane" className="w-full">
-                <TabsList className="bg-gray-800/50 grid w-full grid-cols-3 border border-gray-700">
-                  <TabsTrigger
-                    value="membrane"
-                    className={cn(
-                      'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-900/50',
-                      'data-[state=active]:to-blue-900/50 data-[state=active]:text-white',
-                      'data-[state=active]:border-purple-700'
-                    )}
-                  >
-                    <Code2 className="w-4 h-4 mr-2" />
-                    Membrane Code
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="json"
-                    className={cn(
-                      'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-900/50',
-                      'data-[state=active]:to-blue-900/50 data-[state=active]:text-white',
-                      'data-[state=active]:border-purple-700'
-                    )}
-                  >
-                    <FileJson className="w-4 h-4 mr-2" />
-                    JSON Spec
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="docs"
-                    className={cn(
-                      'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-900/50',
-                      'data-[state=active]:to-blue-900/50 data-[state=active]:text-white',
-                      'data-[state=active]:border-purple-700'
-                    )}
-                  >
-                    <BookOpen className="w-4 h-4 mr-2" />
-                    API Docs
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="membrane" className="mt-6">
-                  <CodeBlock
-                    code={scenarioResult.codeSnippet || scenarioResult.matchedScenario.codeExample}
-                    language="javascript"
-                    showLineNumbers
-                    className="bg-gray-900/50 border-gray-800 max-h-[500px] overflow-y-auto"
-                  >
-                    <CodeBlockCopyButton
-                      className={cn(
-                        'text-gray-300 transition-all duration-200',
-                        'bg-gray-800/50 hover:bg-gray-700/50 hover:scale-110'
-                      )}
-                      onCopy={() => {
-                        toast.success('Code copied to clipboard!', {
-                          duration: 3000,
-                          description: 'Paste it into your Membrane project',
-                        });
-                      }}
-                      onError={() => {
-                        toast.error('Failed to copy code', { duration: 3000 });
-                      }}
-                    />
-                  </CodeBlock>
-                </TabsContent>
-
-                <TabsContent value="json" className="mt-6">
-                  <CodeBlock
-                    code={JSON.stringify(scenarioResult.jsonSpec || scenarioResult.matchedScenario.jsonSpec, null, 2)}
-                    language="json"
-                    showLineNumbers
-                    className="bg-gray-900/50 border-gray-800"
-                  >
-                    <CodeBlockCopyButton
-                      className={cn(
-                        'text-gray-300 transition-all duration-200',
-                        'bg-gray-800/50 hover:bg-gray-700/50 hover:scale-110'
-                      )}
-                      onCopy={() => {
-                        toast.success('JSON specification copied!', {
-                          duration: 3000,
-                          description: 'Ready to use in your configuration',
-                        });
-                      }}
-                      onError={() => {
-                        toast.error('Failed to copy JSON', { duration: 3000 });
-                      }}
-                    />
-                  </CodeBlock>
-                </TabsContent>
-
-                <TabsContent value="docs" className="mt-6">
-                  <div className="bg-gray-900/50 p-6 border border-gray-800 rounded-lg">
-                    <h3 className="mb-4 text-lg font-semibold text-white">API Documentation</h3>
-                    <p className="mb-4 text-gray-300">
-                      Learn how to implement this integration with Membrane's comprehensive API documentation.
-                    </p>
-                    <div className="space-y-3">
-                      <a href="#" className="hover:text-purple-300 block text-purple-400 transition-colors">
-                        → Getting Started Guide
-                      </a>
-                      <a href="#" className="hover:text-purple-300 block text-purple-400 transition-colors">
-                        → {scenarioResult.matchedScenario.name} Reference
-                      </a>
-                      <a href="#" className="hover:text-purple-300 block text-purple-400 transition-colors">
-                        → Building Blocks Documentation
-                      </a>
-                      <a href="#" className="hover:text-purple-300 block text-purple-400 transition-colors">
-                        → Code Examples Repository
-                      </a>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </Card>
-
-          <Card className="bg-gray-900/50 backdrop-blur-xl pt-0 overflow-hidden border-gray-800">
-            <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 px-8 py-6 border-b border-gray-800">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold text-white">Building Blocks</h2>
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    'px-3 py-1 text-purple-200',
-                    'bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-purple-800/50'
-                  )}
-                >
-                  AI-Powered Components
-                </Badge>
-              </div>
-            </div>
-            <div className="p-8">
-              <p className="mb-6 text-gray-300">
-                This integration leverages Membrane's powerful building blocks to create a seamless connection:
-              </p>
-              <div className="md:grid-cols-2 lg:grid-cols-3 grid grid-cols-1 gap-4">
-                {(
-                  [
-                    'actions',
-                    'events',
-                    'flows',
-                    'data-collections',
-                    'unified-data-models',
-                    'field-mappings',
-                  ] as BuildingBlockType[]
-                ).map((blockType) => (
-                  <BuildingBlockCard
-                    key={blockType}
-                    blockType={blockType}
-                    isActive={scenarioResult.matchedScenario.buildingBlocks.includes(blockType)}
-                  />
-                ))}
-              </div>
-              <div
-                className={cn(
-                  'p-4 mt-8 border rounded-lg',
-                  'bg-gradient-to-r from-purple-900/10 to-blue-900/10 border-purple-800/30'
-                )}
-              >
-                <p className="text-sm text-gray-300">
-                  <span className="font-semibold text-purple-300">✨ AI-Native Platform:</span> Membrane automatically
-                  selects and configures the optimal building blocks for your integration, eliminating the need for
-                  manual API configuration.
-                </p>
-              </div>
-            </div>
-          </Card>
+          <MatchedScenarioCard scenarioResult={scenarioResult} />
+          <ImplementationCard scenarioResult={scenarioResult} />
+          <BuildingBlocksCard scenarioResult={scenarioResult} />
         </>
       )}
     </div>
+  );
+}
+
+function MatchedScenarioCard({ scenarioResult }: { scenarioResult: ScenarioResult }) {
+  const headerAction = (
+    <Badge
+      variant="default"
+      className={cn(
+        'px-4 py-1.5 text-sm font-semibold',
+        scenarioResult.confidence >= 90
+          ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+          : scenarioResult.confidence >= 70
+            ? 'bg-gradient-to-r from-blue-500 to-cyan-500'
+            : 'bg-gradient-to-r from-yellow-500 to-orange-500'
+      )}
+    >
+      {scenarioResult.confidence}% Match
+    </Badge>
+  );
+
+  return (
+    <SectionCard
+      title="Matched Scenario"
+      headerAction={headerAction}
+      gradient="bg-gradient-to-r from-blue-900/20 to-purple-900/20"
+    >
+      <div className="sm:flex-row sm:items-start sm:justify-between flex flex-col gap-3 mb-4">
+        <h3 className="sm:text-2xl text-xl font-bold text-white">{scenarioResult.matchedScenario.name}</h3>
+      </div>
+      <p className="mb-6 leading-relaxed text-gray-300">
+        {scenarioResult.personalizedDescription || scenarioResult.matchedScenario.description}
+      </p>
+
+      <div className="mb-10">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h4 className="mb-1 text-lg font-semibold text-white">Integration Architecture</h4>
+            <p className="text-sm text-gray-400">Enterprise-grade implementation pipeline</p>
+          </div>
+          <div className="sm:gap-4 flex flex-wrap items-center gap-3">
+            <div className="sm:gap-2 flex items-center gap-1">
+              <Clock className="sm:w-4 sm:h-4 w-3 h-3 text-gray-400" />
+              <span className="sm:text-sm text-xs text-gray-400">~15 min</span>
+            </div>
+            <div className="sm:gap-2 flex items-center gap-1">
+              <Shield className="sm:w-4 sm:h-4 w-3 h-3 text-green-400" />
+              <span className="sm:text-sm text-xs text-green-400">Secure</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative">
+          {scenarioResult.matchedScenario.howItWorks.map((step: string, index: number) => {
+            const isLast = index === scenarioResult.matchedScenario.howItWorks.length - 1;
+            const complexity =
+              index === 0
+                ? 'Simple'
+                : index === scenarioResult.matchedScenario.howItWorks.length - 1
+                  ? 'Advanced'
+                  : 'Moderate';
+            const timeEstimate =
+              index === 0
+                ? '2 min'
+                : index === scenarioResult.matchedScenario.howItWorks.length - 1
+                  ? '5 min'
+                  : '3 min';
+            const icon =
+              index === 0
+                ? Server
+                : index === scenarioResult.matchedScenario.howItWorks.length - 1
+                  ? CheckCircle2
+                  : Cpu;
+            const IconComponent = icon;
+
+            return (
+              <div key={index} className="relative">
+                {!isLast && (
+                  <div className="hidden lg:block absolute left-8 top-20 w-0.5 h-16 bg-gradient-to-b from-purple-500/50 to-blue-500/50" />
+                )}
+
+                <div className="group sm:gap-4 md:gap-3 relative flex mb-4">
+                  <div className="relative flex-shrink-0">
+                    <div className="sm:block relative hidden">
+                      <div
+                        className={cn(
+                          'w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300',
+                          'bg-gradient-to-br shadow-lg',
+                          index === 0 && 'from-purple-500/20 to-purple-600/20 border border-purple-500/30',
+                          index === scenarioResult.matchedScenario.howItWorks.length - 1 &&
+                            'from-green-500/20 to-green-600/20 border border-green-500/30',
+                          index !== 0 &&
+                            index !== scenarioResult.matchedScenario.howItWorks.length - 1 &&
+                            'from-blue-500/20 to-blue-600/20 border border-blue-500/30',
+                          'group-hover:scale-110'
+                        )}
+                      >
+                        <IconComponent
+                          className={cn(
+                            'w-7 h-7',
+                            index === 0 && 'text-purple-400',
+                            index === scenarioResult.matchedScenario.howItWorks.length - 1 && 'text-green-400',
+                            index !== 0 &&
+                              index !== scenarioResult.matchedScenario.howItWorks.length - 1 &&
+                              'text-blue-400'
+                          )}
+                        />
+                      </div>
+                      <div className="-top-2 -right-2 absolute flex items-center justify-center w-6 h-6 bg-gray-900 border border-gray-700 rounded-full">
+                        <span className="text-xs font-bold text-white">{index + 1}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-800/30 rounded-xl border-gray-700/50 group-hover:border-purple-700/50 sm:p-4 md:p-5 flex-1 p-3 transition-all duration-300 border">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h5 className="mb-1 text-base font-semibold text-white">
+                          {index === 0
+                            ? 'Initialize Connection'
+                            : index === scenarioResult.matchedScenario.howItWorks.length - 1
+                              ? 'Deploy & Monitor'
+                              : `Process Step ${index}`}
+                        </h5>
+                        <p className="leading-relaxed text-gray-300">{step}</p>
+                      </div>
+                    </div>
+
+                    <div className="border-gray-700/50 sm:gap-3 sm:pt-4 sm:mt-4 flex flex-wrap items-center gap-2 pt-3 mt-3 border-t">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={cn(
+                            'px-2 py-1 rounded-full text-xs font-medium',
+                            complexity === 'Simple' && 'bg-green-900/30 text-green-400 border border-green-800/50',
+                            complexity === 'Moderate' && 'bg-blue-900/30 text-blue-400 border border-blue-800/50',
+                            complexity === 'Advanced' && 'bg-purple-900/30 text-purple-400 border border-purple-800/50'
+                          )}
+                        >
+                          {complexity}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-gray-400">
+                        <Clock className="flex-shrink-0 w-3 h-3" />
+                        <span className="whitespace-nowrap text-xs">{timeEstimate}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-gray-400">
+                        <Database className="flex-shrink-0 w-3 h-3" />
+                        <span className="whitespace-nowrap text-xs">API v2</span>
+                      </div>
+
+                      {index === 0 && (
+                        <div className="flex items-center gap-1.5 text-gray-400 sm:ml-auto">
+                          <Shield className="flex-shrink-0 w-3 h-3 text-green-400" />
+                          <span className="whitespace-nowrap text-xs text-green-400">OAuth 2.0</span>
+                        </div>
+                      )}
+
+                      {!isLast && <ArrowRight className="sm:block hidden w-4 h-4 ml-auto text-purple-400" />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline" className="text-purple-300 border-purple-800">
+          {scenarioResult.matchedScenario.category.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+        </Badge>
+        {scenarioResult.matchedScenario.buildingBlocks.slice(0, 3).map((block: string) => (
+          <Badge key={block} variant="outline" className="text-blue-300 border-blue-800">
+            {block.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+          </Badge>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
+function ImplementationCard({ scenarioResult }: { scenarioResult: ScenarioResult }) {
+  return (
+    <SectionCard title="Implementation" gradient="bg-gradient-to-r from-blue-900/20 to-purple-900/20">
+      <Tabs defaultValue="membrane" className="w-full">
+        <TabsList className="bg-gray-800/50 grid w-full h-auto grid-cols-3 border border-gray-700">
+          <TabsTrigger
+            value="membrane"
+            className={cn(
+              'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-900/50',
+              'data-[state=active]:to-blue-900/50 data-[state=active]:text-white',
+              'data-[state=active]:border-purple-700',
+              'flex flex-col sm:flex-row items-center justify-center py-2 sm:py-1.5'
+            )}
+          >
+            <Code2 className="sm:mb-0 sm:mr-2 w-4 h-4 mb-1" />
+            <span className="text-[10px] sm:text-sm">Code</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="json"
+            className={cn(
+              'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-900/50',
+              'data-[state=active]:to-blue-900/50 data-[state=active]:text-white',
+              'data-[state=active]:border-purple-700',
+              'flex flex-col sm:flex-row items-center justify-center py-2 sm:py-1.5'
+            )}
+          >
+            <FileJson className="sm:mb-0 sm:mr-2 w-4 h-4 mb-1" />
+            <span className="text-[10px] sm:text-sm">JSON</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="docs"
+            className={cn(
+              'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-900/50',
+              'data-[state=active]:to-blue-900/50 data-[state=active]:text-white',
+              'data-[state=active]:border-purple-700',
+              'flex flex-col sm:flex-row items-center justify-center py-2 sm:py-1.5'
+            )}
+          >
+            <BookOpen className="sm:mb-0 sm:mr-2 w-4 h-4 mb-1" />
+            <span className="text-[10px] sm:text-sm">Docs</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="membrane" className="mt-6">
+          <CodeBlock
+            code={scenarioResult.codeSnippet || scenarioResult.matchedScenario.codeExample}
+            language="javascript"
+            showLineNumbers
+            className="bg-gray-900/50 border-gray-800 max-h-[500px] overflow-y-auto"
+          >
+            <CodeBlockCopyButton
+              className={cn(
+                'text-gray-300 transition-all duration-200',
+                'bg-gray-800/50 hover:bg-gray-700/50 hover:scale-110'
+              )}
+              onCopy={() => {
+                toast.success('Code copied to clipboard!', {
+                  duration: 3000,
+                  description: 'Paste it into your Membrane project',
+                });
+              }}
+              onError={() => {
+                toast.error('Failed to copy code', { duration: 3000 });
+              }}
+            />
+          </CodeBlock>
+        </TabsContent>
+
+        <TabsContent value="json" className="mt-6">
+          <CodeBlock
+            code={JSON.stringify(scenarioResult.jsonSpec || scenarioResult.matchedScenario.jsonSpec, null, 2)}
+            language="json"
+            showLineNumbers
+            className="bg-gray-900/50 border-gray-800"
+          >
+            <CodeBlockCopyButton
+              className={cn(
+                'text-gray-300 transition-all duration-200',
+                'bg-gray-800/50 hover:bg-gray-700/50 hover:scale-110'
+              )}
+              onCopy={() => {
+                toast.success('JSON specification copied!', {
+                  duration: 3000,
+                  description: 'Ready to use in your configuration',
+                });
+              }}
+              onError={() => {
+                toast.error('Failed to copy JSON', { duration: 3000 });
+              }}
+            />
+          </CodeBlock>
+        </TabsContent>
+
+        <TabsContent value="docs" className="mt-6">
+          <div className="bg-gray-900/50 p-6 border border-gray-800 rounded-lg">
+            <h3 className="mb-4 text-lg font-semibold text-white">API Documentation</h3>
+            <p className="mb-4 text-gray-300">
+              Learn how to implement this integration with Membrane's comprehensive API documentation.
+            </p>
+            <div className="space-y-3">
+              <a href="#" className="hover:text-purple-300 block text-purple-400 transition-colors">
+                → Getting Started Guide
+              </a>
+              <a href="#" className="hover:text-purple-300 block text-purple-400 transition-colors">
+                → {scenarioResult.matchedScenario.name} Reference
+              </a>
+              <a href="#" className="hover:text-purple-300 block text-purple-400 transition-colors">
+                → Building Blocks Documentation
+              </a>
+              <a href="#" className="hover:text-purple-300 block text-purple-400 transition-colors">
+                → Code Examples Repository
+              </a>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </SectionCard>
+  );
+}
+
+function BuildingBlocksCard({ scenarioResult }: { scenarioResult: ScenarioResult }) {
+  const headerAction = (
+    <Badge
+      variant="secondary"
+      className={cn(
+        'px-3 py-1 text-purple-200 hidden md:block',
+        'bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-purple-800/50'
+      )}
+    >
+      AI-Powered Components
+    </Badge>
+  );
+
+  return (
+    <SectionCard title="Building Blocks" headerAction={headerAction}>
+      <p className="sm:text-base md:text-left mb-6 text-sm text-center text-gray-300">
+        This integration leverages Membrane's powerful building blocks to create a seamless connection:
+      </p>
+      <div className="sm:grid-cols-2 lg:grid-cols-3 sm:gap-4 grid grid-cols-1 gap-3">
+        {(
+          [
+            'actions',
+            'events',
+            'flows',
+            'data-collections',
+            'unified-data-models',
+            'field-mappings',
+          ] as BuildingBlockType[]
+        ).map((blockType) => (
+          <BuildingBlockCard
+            key={blockType}
+            blockType={blockType}
+            isActive={scenarioResult.matchedScenario.buildingBlocks.includes(blockType)}
+          />
+        ))}
+      </div>
+      <div
+        className={cn(
+          'p-3 sm:p-4 mt-6 sm:mt-8 border rounded-lg',
+          'bg-gradient-to-r from-purple-900/10 to-blue-900/10 border-purple-800/30'
+        )}
+      >
+        <p className="sm:text-sm text-xs text-gray-300">
+          <span className="font-semibold text-purple-300">✨ AI-Native Platform:</span> Membrane automatically selects
+          and configures the optimal building blocks for your integration, eliminating the need for manual API
+          configuration.
+        </p>
+      </div>
+    </SectionCard>
   );
 }

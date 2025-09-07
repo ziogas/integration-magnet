@@ -22,19 +22,29 @@ export async function generateMembraneCode(
     const systemPrompt = `You are an expert Membrane SDK developer creating production-ready integration code.
 
 Your task is to:
-1. Generate clean, working Membrane SDK code for the specific use case
+1. Generate production-ready Membrane SDK code demonstrating the integration pattern
 2. Use the company's actual systems and entities
-3. Include proper error handling and logging
-4. Follow Membrane SDK best practices
-5. Make the code immediately usable with minimal configuration
+3. Include proper error handling, retries, and logging
+4. Follow Membrane SDK best practices and patterns
+5. Make the code immediately implementable
 
-Code requirements:
-- Use ES6 module syntax with proper imports
-- Include helpful comments explaining key sections
-- Use async/await for all asynchronous operations
-- Include proper error handling with try/catch
-- Use the actual company name and systems mentioned
-- Keep it concise but complete (max 50-60 lines)`;
+Code must demonstrate:
+- Initial sync with pagination: membrane.sync.initial({ pageSize: 100, cursor })
+- Webhook subscription for real-time events: membrane.webhooks.subscribe()
+- Field mapping transformations: membrane.transform.map()
+- Event handlers for created/updated/deleted operations
+- Error handling with exponential backoff
+- Bi-directional sync where applicable
+
+Code structure:
+- Configuration section with company-specific settings
+- Initial sync implementation with pagination
+- Continuous sync setup (webhooks/polling)
+- Field mapping and transformation logic
+- Event handlers for CRUD operations
+- Error handling and monitoring
+
+Keep code practical, ~60-80 lines, with clear sections`;
 
     const userPrompt = `Company: ${companyContext.name}
 Domain: ${companyContext.domain}
@@ -54,7 +64,13 @@ Base Template Code:
 ${scenario.codeExample}
 
 Generate Membrane SDK code specifically for ${companyContext.name}'s use case.
-Adapt the template to use their actual systems and entities.`;
+Adapt the template to use their actual systems (${parsedUseCase.sourceSystem || 'source'}, ${parsedUseCase.destinationSystem || 'destination'}) and entities.
+
+Ensure the code shows:
+1. Initial data sync with pagination
+2. Real-time event subscription
+3. Field mapping for their entities
+4. Bi-directional sync if applicable`;
 
     const result = await queryGpt(systemPrompt, userPrompt, GeneratedCodeSchema);
 
@@ -75,59 +91,137 @@ function generateBasicCode(
   const destSystem = parsedUseCase.destinationSystem?.toLowerCase() || 'destination_system';
   const entities = parsedUseCase.entities.length > 0 ? parsedUseCase.entities : ['data'];
   const primaryEntity = entities[0];
+  const isBidirectional =
+    parsedUseCase.integrationType === 'bidirectional' || scenario.category === 'bi-directional-sync';
 
-  let membraneCode = scenario.codeExample
-    .replace(/'Your Company'/g, `'${companyName}'`)
-    .replace(/YourCompany/g, companyName.replace(/\s+/g, ''))
-    .replace(/salesforce/gi, sourceSystem)
-    .replace(/hubspot/gi, destSystem || sourceSystem)
-    .replace(/companies/gi, primaryEntity)
-    .replace(/company/gi, primaryEntity);
+  const membraneCode = `const membrane = require('@membrane/sdk');
 
-  const configSection = `// ${companyName} Integration Configuration
+// ${companyName} Integration Configuration
 const config = {
   company: '${companyName}',
   domain: '${companyContext.domain}',
   source: '${sourceSystem}',
   destination: '${destSystem}',
   entities: [${entities.map((e) => `'${e}'`).join(', ')}],
+  syncMode: '${isBidirectional ? 'bidirectional' : 'unidirectional'}',
 };
 
-`;
+// Initialize Membrane with your API key
+const integration = membrane.connect({
+  apiKey: process.env.MEMBRANE_API_KEY,
+  ...config
+});
 
-  if (!membraneCode.includes('const config')) {
-    membraneCode = configSection + membraneCode;
+// Initial sync with pagination
+async function performInitialSync() {
+  let cursor = null;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const { data, nextCursor } = await integration.${primaryEntity}.list({
+      provider: config.source,
+      pageSize: 100,
+      cursor
+    });
+    
+    for (const item of data) {
+      await integration.${primaryEntity}.upsert({
+        provider: config.destination,
+        data: membrane.transform.map(item, '${sourceSystem}-to-${destSystem}')
+      });
+    }
+    
+    cursor = nextCursor;
+    hasMore = !!nextCursor;
   }
+}
 
-  const setupInstructions = [
+// Set up continuous sync
+integration.webhooks.subscribe({
+  provider: config.source,
+  events: ['${primaryEntity}.created', '${primaryEntity}.updated', '${primaryEntity}.deleted'],
+  handler: async (event) => {
+    const transformed = membrane.transform.map(event.data, '${sourceSystem}-to-${destSystem}');
+    
+    switch(event.type) {
+      case 'created':
+        await integration.${primaryEntity}.create({ provider: config.destination, data: transformed });
+        break;
+      case 'updated':
+        await integration.${primaryEntity}.update({ provider: config.destination, id: event.id, data: transformed });
+        break;
+      case 'deleted':
+        await integration.${primaryEntity}.delete({ provider: config.destination, id: event.id });
+        break;
+    }
+  }
+});
+
+${
+  isBidirectional
+    ? `// Bi-directional sync from your app
+integration.webhooks.receive('/webhook/${companyContext.domain.replace(/\./g, '-')}', async (event) => {
+  const transformed = membrane.transform.map(event.data, '${destSystem}-to-${sourceSystem}');
+  await integration.${primaryEntity}.sync({ provider: config.source, data: transformed });
+});
+
+`
+    : ''
+}// Start the integration
+integration.start();`;
+
+  return {
+    membraneCode,
+    setupInstructions: generateSetupInstructions(companyName, sourceSystem, destSystem, isBidirectional),
+    requiredEnvVars: generateEnvVars(sourceSystem, destSystem),
+    dependencies: generateDependencies(sourceSystem, destSystem),
+  };
+}
+
+function generateSetupInstructions(
+  companyName: string,
+  sourceSystem: string,
+  destSystem: string,
+  isBidirectional: boolean
+): string[] {
+  const instructions = [
     `Install Membrane SDK: npm install @membrane/sdk`,
     `Configure API credentials for ${sourceSystem}${destSystem !== sourceSystem ? ` and ${destSystem}` : ''}`,
-    `Update the config object with your ${companyName} specific settings`,
-    `Deploy using: membrane deploy --env production`,
+    `Set up field mappings for ${companyName}'s schema`,
+    `Run initial sync: npm run sync:initial`,
   ];
 
-  const requiredEnvVars = [
+  if (isBidirectional) {
+    instructions.push(`Configure webhook endpoint in your application to send events to Membrane`);
+  }
+
+  instructions.push(`Deploy using: membrane deploy --env production`);
+
+  return instructions;
+}
+
+function generateEnvVars(sourceSystem: string, destSystem: string): string[] {
+  const envVars = [
     'MEMBRANE_API_KEY',
     `${sourceSystem.toUpperCase()}_API_KEY`,
     `${sourceSystem.toUpperCase()}_API_SECRET`,
   ];
 
   if (destSystem !== sourceSystem) {
-    requiredEnvVars.push(`${destSystem.toUpperCase()}_API_KEY`, `${destSystem.toUpperCase()}_API_SECRET`);
+    envVars.push(`${destSystem.toUpperCase()}_API_KEY`, `${destSystem.toUpperCase()}_API_SECRET`);
   }
 
-  const dependencies = ['@membrane/sdk', `@membrane/connector-${sourceSystem}`];
+  return [...new Set(envVars)];
+}
+
+function generateDependencies(sourceSystem: string, destSystem: string): string[] {
+  const deps = ['@membrane/sdk', `@membrane/connector-${sourceSystem}`];
 
   if (destSystem !== sourceSystem) {
-    dependencies.push(`@membrane/connector-${destSystem}`);
+    deps.push(`@membrane/connector-${destSystem}`);
   }
 
-  return {
-    membraneCode,
-    setupInstructions,
-    requiredEnvVars: [...new Set(requiredEnvVars)],
-    dependencies: [...new Set(dependencies)],
-  };
+  return [...new Set(deps)];
 }
 
 export async function generateJsonSpec(
@@ -135,6 +229,9 @@ export async function generateJsonSpec(
   companyContext: CompanyContext,
   parsedUseCase: ParsedUseCase
 ): Promise<Record<string, unknown>> {
+  const isBidirectional =
+    parsedUseCase.integrationType === 'bidirectional' || scenario.category === 'bi-directional-sync';
+
   const spec = {
     version: '1.0.0',
     company: {
@@ -157,31 +254,57 @@ export async function generateJsonSpec(
       destinationSystem: parsedUseCase.destinationSystem || null,
       integrationType: parsedUseCase.integrationType || 'sync',
     },
+    syncPattern: {
+      initialSync: {
+        method: 'paginated-import',
+        pageSize: 100,
+        estimatedRecords: 'varies',
+      },
+      continuousSync: {
+        fromExternal: {
+          method: scenario.buildingBlocks.includes('events') ? 'webhook' : 'polling',
+          frequency: scenario.buildingBlocks.includes('events') ? 'real-time' : '5-minutes',
+        },
+        toExternal: isBidirectional
+          ? {
+              method: 'webhook-receive',
+              endpoint: `/webhook/${companyContext.domain.replace(/\./g, '-')}`,
+            }
+          : null,
+      },
+    },
     configuration: {
       buildingBlocks: scenario.buildingBlocks,
       supportedApplications: scenario.supportedApps,
       dataFlow: {
         source: parsedUseCase.sourceSystem || 'multiple_sources',
         destination: parsedUseCase.destinationSystem || 'multiple_destinations',
-        direction: parsedUseCase.integrationType === 'bidirectional' ? 'bidirectional' : 'unidirectional',
+        direction: isBidirectional ? 'bidirectional' : 'unidirectional',
         syncFrequency: 'real-time',
       },
       fieldMappings: parsedUseCase.entities.map((entity) => ({
-        sourceField: `source.${entity}`,
-        destinationField: `destination.${entity}`,
-        transformation: 'direct',
+        sourceField: `${parsedUseCase.sourceSystem || 'source'}.${entity}`,
+        destinationField: `${parsedUseCase.destinationSystem || 'destination'}.${entity}`,
+        transformation: 'membrane.transform.map',
+        validation: true,
         required: true,
       })),
     },
     implementation: {
       estimatedHours: scenario.buildingBlocks.length * 8,
       complexity: scenario.buildingBlocks.length > 3 ? 'high' : 'medium',
-      prerequisites: ['API credentials for connected systems', 'Membrane SDK license', 'Development environment setup'],
+      prerequisites: [
+        'API credentials for connected systems',
+        'Membrane SDK license',
+        'Field mapping configuration',
+        isBidirectional ? 'Webhook endpoint configuration' : null,
+      ].filter(Boolean),
     },
     metadata: {
       createdAt: new Date().toISOString(),
       scenarioTemplateId: scenario.id,
       confidenceScore: scenario.confidence || 100,
+      generatedBy: 'membrane-lead-magnet',
     },
   };
 

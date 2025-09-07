@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,46 +12,28 @@ import { cn } from '@/lib/utils';
 import { useIntegration } from '@/contexts/integration-context';
 
 export function FormSection() {
-  const { domain, setDomain, domainError, setDomainError, useCase, setUseCase, isLoading, generateIntegration } =
-    useIntegration();
+  const { isLoading, handleFormSubmit } = useIntegration();
+  const [domain, setDomain] = useState('');
+  const [useCase, setUseCase] = useState('');
+  const [domainError, setDomainError] = useState('');
 
-  const validateUrl = useCallback(
-    (url: string) => {
-      if (!url) {
-        setDomainError('');
-        return true;
-      }
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
 
-      const domainPattern = /^([\da-z\.-]+)\.([a-z\.]{2,6})$/;
-      const isValid = domainPattern.test(url);
+    const domainPattern = /^([\da-z\.-]+)\.([a-z\.]{2,6})$/;
+    if (!domain || !domainPattern.test(domain)) {
+      setDomainError('Please enter a valid domain (e.g., example.com)');
+      return;
+    }
 
-      setDomainError(isValid ? '' : 'Please enter a valid domain (e.g., example.com)');
-      return isValid;
-    },
-    [setDomainError]
-  );
-
-  const handleUrlChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      setDomain(value);
-      validateUrl(value);
-    },
-    [setDomain, validateUrl]
-  );
-
-  const handleExampleDomain = useCallback(() => {
-    const exampleDomain = 'stripe.com';
-    setDomain(exampleDomain);
-    validateUrl(exampleDomain);
-  }, [setDomain, validateUrl]);
-
-  const isFormValid = domain && useCase && !domainError && !isLoading;
+    setDomainError('');
+    handleFormSubmit(domain, useCase);
+  }
 
   return (
-    <Card className="bg-gradient-to-b from-gray-900/60 to-gray-900/40 backdrop-blur-xl border-gray-800/50 max-w-4xl p-8 mx-auto shadow-2xl">
-      <div className="space-y-6">
-        <div className="space-y-3">
+    <Card className="md:border md:bg-gradient-to-b md:from-gray-900/60 md:to-gray-900/40 md:backdrop-blur-xl md:border-gray-800/50 md:p-8 max-w-4xl mx-auto bg-transparent border-0 shadow-2xl">
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="space-y-2">
           <label htmlFor="company-domain" className="block text-sm font-semibold text-gray-100">
             Company Domain
           </label>
@@ -62,7 +44,10 @@ export function FormSection() {
               type="text"
               placeholder="your-company.com"
               value={domain}
-              onChange={handleUrlChange}
+              onChange={(e) => {
+                setDomain(e.target.value);
+                setDomainError('');
+              }}
               className={cn(
                 'pl-10 h-12 bg-gray-950/60 border-gray-700/50 text-gray-100',
                 'placeholder:text-gray-600 transition-all duration-200',
@@ -81,7 +66,7 @@ export function FormSection() {
             Or try with{' '}
             <button
               type="button"
-              onClick={handleExampleDomain}
+              onClick={() => setDomain('stripe.com')}
               className="hover:text-purple-300 underline-offset-2 font-medium text-purple-400 underline transition-colors"
             >
               stripe.com
@@ -90,17 +75,15 @@ export function FormSection() {
           </p>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label htmlFor="use-case" className="block text-sm font-semibold text-gray-100">
-              Integration Use Case
-            </label>
-            <span className="font-mono text-xs text-gray-600">{useCase.length}/2000</span>
-          </div>
+        <div className="space-y-2">
+          <label htmlFor="use-case" className="block text-sm font-semibold text-gray-100">
+            Integration Use Case
+          </label>
           <Textarea
             id="use-case"
             value={useCase}
-            onChange={(e) => setUseCase(e.target.value.slice(0, 2000))}
+            onChange={(e) => setUseCase(e.target.value)}
+            maxLength={2000}
             placeholder="Describe your integration needs (e.g., sync call recordings with HubSpot and Salesforce)"
             rows={4}
             className={cn(
@@ -110,7 +93,7 @@ export function FormSection() {
             )}
           />
 
-          <div className="space-y-2.5">
+          <div className="pt-2 space-y-2">
             <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
               <Sparkles className="w-3.5 h-3.5 text-purple-400" />
               <span>Quick examples</span>
@@ -120,33 +103,19 @@ export function FormSection() {
                 <Suggestion
                   key={index}
                   suggestion={prompt}
-                  onClick={setUseCase}
-                  className="bg-gray-800/60 hover:bg-gray-700/60 hover:text-gray-100 border-gray-700/50 hover:border-gray-600 text-gray-300"
+                  onClick={() => setUseCase(prompt)}
+                  className="bg-gray-800/60 hover:bg-gray-700/60 hover:text-gray-100 border-gray-700/50 hover:border-gray-600 text-gray-300 max-w-[270px]"
                   title={prompt}
                 >
-                  {prompt.length > 45 ? `${prompt.slice(0, 45)}...` : prompt}
+                  <span className="block truncate">{prompt}</span>
                 </Suggestion>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="flex justify-center pt-4">
-          <Button
-            type="button"
-            disabled={!isFormValid}
-            onClick={generateIntegration}
-            size="lg"
-            className={cn(
-              'relative group h-12 px-8 font-semibold',
-              'bg-gradient-to-r from-purple-600 to-blue-600',
-              'hover:from-purple-500 hover:to-blue-500',
-              'text-white shadow-lg hover:shadow-purple-500/25',
-              'transition-all duration-300 hover:scale-105',
-              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',
-              'disabled:hover:shadow-lg'
-            )}
-          >
+        <div className="flex justify-center pt-2">
+          <Button type="submit" disabled={isLoading} size="lg">
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin w-4 h-4 mr-2" />
@@ -161,7 +130,7 @@ export function FormSection() {
             )}
           </Button>
         </div>
-      </div>
+      </form>
     </Card>
   );
 }

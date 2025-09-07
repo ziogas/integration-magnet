@@ -2,6 +2,7 @@
 
 import { parseUseCase } from './use-case-parser';
 import { matchScenario } from './scenario-matcher';
+import { generateJsonSpec } from './code-generator';
 import { getApplicationLogoUrl } from '@/lib/logo-api';
 import type { ScenarioGenerationResult, CompanyContext } from '@/types';
 
@@ -31,13 +32,15 @@ export async function generateScenario(
 
     const applicationLogos = scenario.supportedApps.slice(0, 8).map((app) => getApplicationLogoUrl(app));
 
+    const jsonSpec = await generateJsonSpec(scenario, companyContext, parsedUseCase);
+
     const result: ScenarioGenerationResult = {
       companyContext,
       parsedUseCase,
       matchedScenario: scenario,
       personalizedDescription,
       codeSnippet,
-      jsonSpec: scenario.jsonSpec || {},
+      jsonSpec,
       applicationLogos,
       confidence,
     };
