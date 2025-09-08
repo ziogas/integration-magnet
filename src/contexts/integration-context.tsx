@@ -7,6 +7,7 @@ import type { CompanyContext, ScenarioGenerationResult, Persona } from '@/types'
 import { EXAMPLE_PROMPTS } from '@/components/integration-generator/constants';
 import { scrapeCompanyDetails } from '@/actions/company-scraper';
 import { generateScenario } from '@/actions/generate-scenario';
+import { trackEvent } from '@/lib/posthog';
 
 type IntegrationState = {
   domain: string;
@@ -138,6 +139,12 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
 
     updateUrlParams({ domain: cleanDomain });
 
+    trackEvent('form_submitted', {
+      domain: cleanDomain,
+      persona: state.persona,
+      use_case: state.useCase,
+    });
+
     try {
       const { data: companyContext, hasFullData, error: scrapeError } = await scrapeCompanyDetails(cleanDomain);
 
@@ -150,6 +157,10 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
           isLoading: false,
           showResults: false,
         }));
+        trackEvent('integration_failed', {
+          domain: cleanDomain,
+          error_type: 'scraping_error',
+        });
         return;
       }
 
@@ -169,11 +180,20 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
           showResults: true,
           noMatch: true,
         }));
+        trackEvent('integration_failed', {
+          domain: cleanDomain,
+          error_type: 'no_match',
+        });
         return;
       }
 
       if (!scenarioResult.success) {
-        throw new Error(scenarioResult.error || 'Failed to generate scenario');
+        const errorMsg = scenarioResult.error || 'Failed to generate scenario';
+        trackEvent('integration_failed', {
+          domain: cleanDomain,
+          error_type: 'generation_error',
+        });
+        throw new Error(errorMsg);
       }
 
       setState((prev) => ({
@@ -184,6 +204,13 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         showResults: true,
         noMatch: false,
       }));
+
+      trackEvent('integration_generated', {
+        domain: cleanDomain,
+        persona: state.persona,
+        scenario_name: scenarioResult.data!.matchedScenario.name,
+        confidence_score: scenarioResult.data!.confidence,
+      });
 
       toast.success('Integration scenario generated successfully!');
     } catch (error) {
@@ -196,6 +223,10 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
       }));
 
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate integration scenario';
+      trackEvent('integration_failed', {
+        domain: cleanDomain,
+        error_type: 'unexpected_error',
+      });
       toast.error(errorMessage, {
         duration: 5000,
       });

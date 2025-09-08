@@ -28,6 +28,7 @@ import { useIntegration } from '@/contexts/integration-context';
 import { getCompanyLogoUrl, getApplicationLogoUrl } from '@/lib/logo-api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { trackEvent } from '@/lib/posthog';
 import { Button } from '../ui/button';
 import { SectionCard } from './section-card';
 
@@ -266,7 +267,14 @@ function NoMatchFallback({ companyContext, resetState }: { companyContext: Compa
   return (
     <div className="sm:mt-12 md:mt-16 max-w-4xl mx-auto mt-8">
       <div className="flex justify-start mb-6">
-        <Button onClick={resetState} variant="ghost" className="sm:text-base text-sm">
+        <Button
+          onClick={() => {
+            trackEvent('try_again_clicked');
+            resetState();
+          }}
+          variant="ghost"
+          className="sm:text-base text-sm"
+        >
           <ArrowLeft className="sm:w-4 sm:h-4 w-3 h-3" />
           <span className="sm:inline hidden">Try Again</span>
           <span className="sm:hidden">Back</span>
@@ -327,7 +335,14 @@ export function ResultsSection() {
   return (
     <div className="sm:mt-12 md:mt-16 sm:space-y-8 max-w-6xl mx-auto mt-8 space-y-6">
       <div className="flex justify-start">
-        <Button onClick={resetState} variant="ghost" className="sm:text-base text-sm">
+        <Button
+          onClick={() => {
+            trackEvent('try_again_clicked');
+            resetState();
+          }}
+          variant="ghost"
+          className="sm:text-base text-sm"
+        >
           <ArrowLeft className="sm:w-4 sm:h-4 w-3 h-3" />
           <span className="sm:inline hidden">New Integration</span>
           <span className="sm:hidden">Back</span>
@@ -578,6 +593,9 @@ function ImplementationCard({ scenarioResult }: { scenarioResult: ScenarioResult
                 'bg-gray-800/50 hover:bg-gray-700/50 hover:scale-110'
               )}
               onCopy={() => {
+                trackEvent('code_copied', {
+                  integration_type: 'membrane',
+                });
                 toast.success('Code copied to clipboard!', {
                   duration: 3000,
                   description: 'Paste it into your Membrane project',
@@ -603,6 +621,9 @@ function ImplementationCard({ scenarioResult }: { scenarioResult: ScenarioResult
                 'bg-gray-800/50 hover:bg-gray-700/50 hover:scale-110'
               )}
               onCopy={() => {
+                trackEvent('code_copied', {
+                  integration_type: 'json',
+                });
                 toast.success('JSON specification copied!', {
                   duration: 3000,
                   description: 'Ready to use in your configuration',

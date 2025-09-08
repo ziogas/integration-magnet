@@ -6,11 +6,13 @@ import { ArrowRight, Calendar } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ApiKeyDialog } from './api-key-dialog';
+import { trackEvent } from '@/lib/posthog';
 
 export function StickyFooter() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleBookDemo = () => {
+    trackEvent('demo_requested');
     window.open('https://integration.app/book-a-demo', '_blank');
   };
 
@@ -48,7 +50,13 @@ export function StickyFooter() {
                   <span className="sm:hidden">Demo</span>
                 </Button>
 
-                <Button onClick={() => setIsModalOpen(true)} className="sm:text-sm sm:flex-initial flex-1 text-xs">
+                <Button
+                  onClick={() => {
+                    trackEvent('api_key_modal_opened');
+                    setIsModalOpen(true);
+                  }}
+                  className="sm:text-sm sm:flex-initial flex-1 text-xs"
+                >
                   <span className="sm:inline hidden">Get API Key</span>
                   <span className="sm:hidden">Get Key</span>
                   <ArrowRight className="sm:w-4 sm:h-4 sm:ml-2 w-3 h-3 ml-1" />

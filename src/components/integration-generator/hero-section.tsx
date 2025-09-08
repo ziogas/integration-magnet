@@ -6,11 +6,13 @@ import { ArrowRight, Calendar } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { ApiKeyDialog } from './api-key-dialog';
+import { trackEvent } from '@/lib/posthog';
 
 export function HeroSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleBookDemo = () => {
+    trackEvent('demo_requested');
     window.open('https://integration.app/book-a-demo', '_blank');
   };
 
@@ -35,7 +37,12 @@ export function HeroSection() {
               <Calendar className="w-4 h-4 mr-1" />
               Book a Demo
             </Button>
-            <Button onClick={() => setIsModalOpen(true)}>
+            <Button
+              onClick={() => {
+                trackEvent('api_key_modal_opened');
+                setIsModalOpen(true);
+              }}
+            >
               Get API Key
               <ArrowRight className="md:block hidden w-4 h-4 ml-2" />
             </Button>

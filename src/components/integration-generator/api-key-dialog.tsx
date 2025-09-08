@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useIntegration } from '@/contexts/integration-context';
+import { trackEvent } from '@/lib/posthog';
 
 type ApiKeyDialogProps = {
   open: boolean;
@@ -39,6 +40,8 @@ export function ApiKeyDialog({ open, onOpenChange }: ApiKeyDialogProps) {
     toast.success('Magic link sent! Check your email to complete signup and get your API key.', {
       duration: 10000,
     });
+
+    trackEvent('api_key_requested');
 
     setAgreedToTerms(false);
     setIsSubmitting(false);

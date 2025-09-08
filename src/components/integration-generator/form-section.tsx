@@ -12,6 +12,7 @@ import { Suggestion } from '@/components/ai-elements/suggestion';
 import { cn } from '@/lib/utils';
 import { Persona } from '@/types';
 import { useIntegration } from '@/contexts/integration-context';
+import { trackEvent } from '@/lib/posthog';
 
 import { EXAMPLE_PROMPTS } from './constants';
 
@@ -84,7 +85,13 @@ export function FormSection() {
               Or try with{' '}
               <button
                 type="button"
-                onClick={() => setDomain('gong.io')}
+                onClick={() => {
+                  setDomain('gong.io');
+                  trackEvent('example_used', {
+                    example_type: 'domain',
+                    value: 'gong.io',
+                  });
+                }}
                 className="hover:text-purple-300 underline-offset-2 font-medium text-purple-400 underline transition-colors"
               >
                 gong.io
@@ -164,7 +171,13 @@ export function FormSection() {
                 <Suggestion
                   key={index}
                   suggestion={prompt}
-                  onClick={() => setUseCase(prompt)}
+                  onClick={() => {
+                    setUseCase(prompt);
+                    trackEvent('example_used', {
+                      example_type: 'prompt',
+                      value: prompt,
+                    });
+                  }}
                   className="bg-gray-800/60 hover:bg-gray-700/60 hover:text-gray-100 border-gray-700/50 hover:border-gray-600 text-gray-300 max-w-[270px]"
                   title={prompt}
                 >

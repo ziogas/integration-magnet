@@ -3,91 +3,7 @@
 import { z } from 'zod';
 import { queryGpt } from '@/lib/gpt';
 import { scenarioTemplates } from '@/lib/scenario-templates';
-import type { ScenarioTemplate, BuildingBlock, ScenarioCategory, ParsedUseCase } from '@/types';
-
-function mapToValidCategory(category: string): ScenarioCategory {
-  const categoryMap: Record<string, ScenarioCategory> = {
-    'unified-api': 'unified-api',
-    'data-import-export': 'data-import-export',
-    'bi-directional-sync': 'bi-directional-sync',
-    'workflow-automation': 'workflow-automation',
-    'webhook-events': 'webhook-events',
-    'data-transformation': 'data-transformation',
-    unified: 'unified-api',
-    import: 'data-import-export',
-    export: 'data-import-export',
-    sync: 'bi-directional-sync',
-    bidirectional: 'bi-directional-sync',
-    workflow: 'workflow-automation',
-    automation: 'workflow-automation',
-    webhook: 'webhook-events',
-    event: 'webhook-events',
-    etl: 'data-transformation',
-    transform: 'data-transformation',
-    transformation: 'data-transformation',
-  };
-
-  const normalized = category.toLowerCase().replace(/[_\s-]/g, '');
-
-  for (const [key, value] of Object.entries(categoryMap)) {
-    if (normalized.includes(key)) {
-      return value;
-    }
-  }
-
-  return 'workflow-automation';
-}
-
-function validateAndMapBuildingBlocks(blocks: string[]): BuildingBlock[] {
-  const validBlocks: BuildingBlock[] = [
-    'actions',
-    'events',
-    'flows',
-    'data-collections',
-    'unified-data-models',
-    'field-mappings',
-  ];
-
-  const blockMap: Record<string, BuildingBlock> = {
-    actions: 'actions',
-    action: 'actions',
-    events: 'events',
-    event: 'events',
-    flows: 'flows',
-    flow: 'flows',
-    datacollections: 'data-collections',
-    datacollection: 'data-collections',
-    collections: 'data-collections',
-    unifieddatamodels: 'unified-data-models',
-    unifiedmodels: 'unified-data-models',
-    datamodels: 'unified-data-models',
-    fieldmappings: 'field-mappings',
-    fieldmapping: 'field-mappings',
-    mappings: 'field-mappings',
-  };
-
-  const result: BuildingBlock[] = [];
-  const seen = new Set<BuildingBlock>();
-
-  for (const block of blocks) {
-    const normalized = block.toLowerCase().replace(/[_\s-]/g, '');
-    const mapped = blockMap[normalized];
-
-    if (mapped && !seen.has(mapped)) {
-      result.push(mapped);
-      seen.add(mapped);
-    } else if (validBlocks.includes(block as BuildingBlock) && !seen.has(block as BuildingBlock)) {
-      result.push(block as BuildingBlock);
-      seen.add(block as BuildingBlock);
-    }
-  }
-
-  if (result.length === 0) {
-    result.push('actions');
-  }
-
-  return result;
-}
+import type { ScenarioTemplate, ParsedUseCase } from '@/types';
 
 function preFilterScenarios(useCase: string, maxScenarios = 30): typeof scenarioTemplates {
   const useCaseLower = useCase.toLowerCase();
@@ -152,17 +68,6 @@ const CombinedAnalysisSchema = z.object({
     reasoning: z.string(),
     fallbackReason: z.string().nullable().optional(),
   }),
-});
-
-const GeneratedScenarioSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  category: z.string(),
-  keywords: z.array(z.string()),
-  supportedApps: z.array(z.string()),
-  buildingBlocks: z.array(z.string()),
-  codeExample: z.string(),
-  howItWorks: z.array(z.string()).min(3).max(4),
 });
 
 export async function parseAndMatchScenario(
