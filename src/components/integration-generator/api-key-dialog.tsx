@@ -9,15 +9,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { useIntegration } from '@/contexts/integration-context';
 
 type ApiKeyDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultEmail?: string;
 };
 
-export function ApiKeyDialog({ open, onOpenChange, defaultEmail = '' }: ApiKeyDialogProps) {
-  const [email, setEmail] = useState(defaultEmail);
+export function ApiKeyDialog({ open, onOpenChange }: ApiKeyDialogProps) {
+  const { email, setEmail } = useIntegration();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -32,10 +33,13 @@ export function ApiKeyDialog({ open, onOpenChange, defaultEmail = '' }: ApiKeyDi
     }
 
     setIsSubmitting(true);
+
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    toast.success('Magic link sent! Check your email to complete signup and get your API key.');
-    setEmail('');
+    toast.success('Magic link sent! Check your email to complete signup and get your API key.', {
+      duration: 10000,
+    });
+
     setAgreedToTerms(false);
     setIsSubmitting(false);
     onOpenChange(false);

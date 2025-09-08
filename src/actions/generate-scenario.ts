@@ -1,38 +1,48 @@
 'use server';
 
-import { parseUseCase } from './use-case-parser';
-import { matchScenario } from './scenario-matcher';
+import { parseAndMatchScenario } from './scenario-matcher';
 import { generateJsonSpec } from './code-generator';
 import { getApplicationLogoUrl } from '@/lib/logo-api';
 import type { ScenarioGenerationResult, CompanyContext } from '@/types';
 
 export async function generateScenario(
   companyContext: CompanyContext,
-  useCase: string
-): Promise<{ success: boolean; data?: ScenarioGenerationResult; error?: string }> {
+  useCase: string,
+  persona: 'technical' | 'executive' | 'business' = 'executive'
+): Promise<{ success: boolean; data?: ScenarioGenerationResult; error?: string; noMatch?: boolean }> {
   try {
-    const parsedUseCase = await parseUseCase(useCase, {
-      name: companyContext.name,
-      description: companyContext.description,
-    });
-
-    const matchResult = await matchScenario(parsedUseCase, {
-      name: companyContext.name,
-      description: companyContext.description,
-    });
+    const matchResult = await parseAndMatchScenario(
+      useCase,
+      {
+        name: companyContext.name,
+        description: companyContext.description,
+        industry: companyContext.industry,
+      },
+      persona
+    );
 
     if (!matchResult) {
       return {
         success: false,
+        noMatch: true,
         error: 'Could not match your use case to a scenario. Please try with more details.',
       };
     }
 
-    const { scenario, confidence, personalizedDescription, codeSnippet } = matchResult;
+    const { parsedUseCase, scenario, confidence, personalizedDescription, codeSnippet } = matchResult;
 
-    const applicationLogos = scenario.supportedApps.slice(0, 8).map((app) => getApplicationLogoUrl(app));
+    if (confidence < 30) {
+      return {
+        success: false,
+        noMatch: true,
+        error: 'No strong match found for your use case.',
+      };
+    }
 
-    const jsonSpec = await generateJsonSpec(scenario, companyContext, parsedUseCase);
+    const [applicationLogos, jsonSpec] = await Promise.all([
+      Promise.resolve(scenario.supportedApps.slice(0, 8).map((app) => getApplicationLogoUrl(app))),
+      generateJsonSpec(scenario, companyContext, parsedUseCase, persona),
+    ]);
 
     const result: ScenarioGenerationResult = {
       companyContext,

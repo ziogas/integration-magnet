@@ -1,6 +1,5 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -30,7 +29,7 @@ import { getCompanyLogoUrl, getApplicationLogoUrl } from '@/lib/logo-api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
-import type { ReactNode } from 'react';
+import { SectionCard } from './section-card';
 
 type CompanyContext = {
   name: string;
@@ -56,38 +55,6 @@ type ScenarioResult = {
     jsonSpec: Record<string, unknown>;
   };
 };
-
-type SectionCardProps = {
-  title: string;
-  headerAction?: ReactNode;
-  gradient?: string;
-  children: ReactNode;
-  className?: string;
-};
-
-function SectionCard({
-  title,
-  headerAction,
-  gradient = 'bg-gradient-to-r from-purple-900/20 to-blue-900/20',
-  children,
-  className,
-}: SectionCardProps) {
-  return (
-    <Card className={cn('bg-gray-900/50 backdrop-blur-xl pt-0 overflow-hidden border-gray-800', className)}>
-      <div className={cn('px-4 py-3 sm:px-6 sm:py-4 md:px-8 md:py-6 border-b border-gray-800', gradient)}>
-        {headerAction ? (
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="sm:text-xl md:text-2xl text-lg font-semibold text-white">{title}</h2>
-            {headerAction}
-          </div>
-        ) : (
-          <h2 className="sm:text-xl md:text-2xl text-lg font-semibold text-white">{title}</h2>
-        )}
-      </div>
-      <div className="md:px-8 px-4 py-2">{children}</div>
-    </Card>
-  );
-}
 
 type ApplicationLogoProps =
   | {
@@ -138,37 +105,37 @@ const buildingBlockConfig: Record<
   actions: {
     icon: Zap,
     title: 'Actions',
-    description: 'Execute requests and queries to external applications',
+    description: 'Execute requests and queries to external applications.',
     gradient: 'from-purple-500 to-purple-700',
   },
   events: {
     icon: Activity,
     title: 'Events',
-    description: 'Track and respond to changes in external applications',
+    description: 'Track and respond to changes in external applications.',
     gradient: 'from-blue-500 to-blue-700',
   },
   flows: {
     icon: GitBranch,
     title: 'Flows',
-    description: 'Multi-step integrations with branching and loops',
+    description: 'Multi-step integrations with branching and loops.',
     gradient: 'from-green-500 to-green-700',
   },
   'data-collections': {
     icon: Database,
     title: 'Data Collections',
-    description: 'Read, write, and search data across systems',
+    description: 'Read, write, and search your data. Enabling synchronization and information retrieval.',
     gradient: 'from-orange-500 to-orange-700',
   },
   'unified-data-models': {
     icon: Layers,
     title: 'Unified Data Models',
-    description: 'Consistent data handling across all integrations',
+    description: 'Consistent data handling across all integrations.',
     gradient: 'from-pink-500 to-pink-700',
   },
   'field-mappings': {
     icon: Link,
     title: 'Field Mappings',
-    description: 'Custom data transformations and mappings',
+    description: 'Data transformations and mappings between systems, enabling seamless integration.',
     gradient: 'from-cyan-500 to-cyan-700',
   },
 };
@@ -295,15 +262,67 @@ function SupportedApplicationsCard({ scenarioResult }: { scenarioResult: Scenari
   );
 }
 
+function NoMatchFallback({ companyContext, resetState }: { companyContext: CompanyContext; resetState: () => void }) {
+  return (
+    <div className="sm:mt-12 md:mt-16 max-w-4xl mx-auto mt-8">
+      <div className="flex justify-start mb-6">
+        <Button onClick={resetState} variant="ghost" className="sm:text-base text-sm">
+          <ArrowLeft className="sm:w-4 sm:h-4 w-3 h-3" />
+          <span className="sm:inline hidden">Try Again</span>
+          <span className="sm:hidden">Back</span>
+        </Button>
+      </div>
+
+      <SectionCard title="No Perfect Match Found" gradient="bg-gradient-to-r from-orange-900/20 to-yellow-900/20">
+        <div className="py-4 space-y-6 text-center">
+          <div className="space-y-4">
+            <p className="text-lg text-gray-300">
+              We couldn't find an exact match for your use case with {companyContext.name}.
+            </p>
+            <p className="text-gray-400">
+              But don't worry! You can explore our extensive scenario library to find the perfect integration for your
+              needs.
+            </p>
+          </div>
+
+          <div className="pt-4">
+            <Button
+              size="lg"
+              onClick={() => window.open('https://integration.app/scenarios', '_blank')}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Explore Scenario Library
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+
+          <div className="pt-4 border-t border-gray-800">
+            <p className="text-sm text-gray-500">
+              Or try refining your use case description with more specific details about the systems and workflows you
+              want to integrate.
+            </p>
+          </div>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
 export function ResultsSection() {
-  const { showResults, companyContext, scenarioResult, resetState } = useIntegration() as {
+  const { showResults, companyContext, scenarioResult, resetState, noMatch } = useIntegration() as {
     showResults: boolean;
     companyContext: CompanyContext | null;
     scenarioResult: ScenarioResult | null;
     resetState: () => void;
+    noMatch: boolean;
   };
 
   if (!showResults || !companyContext) return null;
+
+  if (noMatch) {
+    return <NoMatchFallback companyContext={companyContext} resetState={resetState} />;
+  }
 
   return (
     <div className="sm:mt-12 md:mt-16 sm:space-y-8 max-w-6xl mx-auto mt-8 space-y-6">
@@ -479,14 +498,6 @@ function MatchedScenarioCard({ scenarioResult }: { scenarioResult: ScenarioResul
                         <Database className="flex-shrink-0 w-3 h-3" />
                         <span className="whitespace-nowrap text-xs">API v2</span>
                       </div>
-
-                      {index === 0 && (
-                        <div className="flex items-center gap-1.5 text-gray-400 sm:ml-auto">
-                          <Shield className="flex-shrink-0 w-3 h-3 text-green-400" />
-                          <span className="whitespace-nowrap text-xs text-green-400">OAuth 2.0</span>
-                        </div>
-                      )}
-
                       {!isLast && <ArrowRight className="sm:block hidden w-4 h-4 ml-auto text-purple-400" />}
                     </div>
                   </div>
@@ -649,7 +660,7 @@ function BuildingBlocksCard({ scenarioResult }: { scenarioResult: ScenarioResult
       <p className="sm:text-base md:text-left mb-6 text-sm text-center text-gray-300">
         This integration leverages Membrane's powerful building blocks to create a seamless connection:
       </p>
-      <div className="sm:grid-cols-2 lg:grid-cols-3 sm:gap-4 grid grid-cols-1 gap-3">
+      <div className="sm:grid-cols-2 lg:grid-cols-3 grid grid-cols-1 gap-4">
         {(
           [
             'actions',

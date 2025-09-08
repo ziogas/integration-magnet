@@ -65,9 +65,12 @@ export type ScenarioGenerationResult = {
   confidence: number;
 };
 
+export type Persona = 'technical' | 'executive' | 'business';
+
 export type FormData = {
   domain: string;
   useCase: string;
+  persona: Persona;
   email?: string;
   gdprConsent?: boolean;
 };

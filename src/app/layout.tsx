@@ -11,11 +11,6 @@ export const metadata: Metadata = {
   title: 'Membrane AI Integration Builder - Generate Custom Integrations',
   description:
     'Build AI-powered integrations for your product in seconds. Membrane helps you connect 3,289+ apps with intelligent code generation.',
-  icons: [
-    // { rel: 'apple-touch-icon', url: '/apple-touch-icon.png' },
-    // { rel: 'icon', sizes: '32x32', url: '/favicon-32x32.png' },
-    // { rel: 'icon', sizes: '16x16', url: '/favicon-16x16.png' },
-  ],
 };
 
 export default function Layout({

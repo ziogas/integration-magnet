@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { queryGpt } from '@/lib/gpt';
 import { scenarioTemplates } from '@/lib/scenario-templates';
-import { ParsedUseCase, ScenarioTemplate, BuildingBlock, ScenarioCategory } from '@/types';
+import type { ScenarioTemplate, BuildingBlock, ScenarioCategory, ParsedUseCase } from '@/types';
 
 function mapToValidCategory(category: string): ScenarioCategory {
   const categoryMap: Record<string, ScenarioCategory> = {
@@ -89,14 +89,69 @@ function validateAndMapBuildingBlocks(blocks: string[]): BuildingBlock[] {
   return result;
 }
 
-const MatchedScenarioSchema = z.object({
-  scenarioId: z.string().nullable(),
-  confidence: z.number().min(0).max(100),
-  personalizedDescription: z.string(),
-  customizedCodeSnippet: z.string(),
-  reasoning: z.string(),
-  suggestedApps: z.array(z.string()),
-  fallbackReason: z.string().nullable().optional(),
+function preFilterScenarios(useCase: string, maxScenarios = 30): typeof scenarioTemplates {
+  const useCaseLower = useCase.toLowerCase();
+  const words = useCaseLower.split(/\s+/);
+
+  const scoredScenarios = scenarioTemplates.map((scenario) => {
+    let score = 0;
+
+    if (scenario.name.toLowerCase().includes(useCaseLower)) {
+      score += 10;
+    }
+
+    if (scenario.description.toLowerCase().includes(useCaseLower)) {
+      score += 5;
+    }
+
+    for (const keyword of scenario.keywords) {
+      const keywordLower = keyword.toLowerCase();
+      if (useCaseLower.includes(keywordLower)) {
+        score += 3;
+      }
+      for (const word of words) {
+        if (keywordLower.includes(word) || word.includes(keywordLower)) {
+          score += 1;
+        }
+      }
+    }
+
+    if (useCaseLower.includes('sync') && scenario.category.includes('sync')) {
+      score += 5;
+    }
+    if (useCaseLower.includes('import') && scenario.category.includes('import')) {
+      score += 5;
+    }
+    if (useCaseLower.includes('export') && scenario.category.includes('export')) {
+      score += 5;
+    }
+
+    return { scenario, score };
+  });
+
+  return scoredScenarios
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxScenarios)
+    .map((item) => item.scenario);
+}
+
+const CombinedAnalysisSchema = z.object({
+  parsedUseCase: z.object({
+    description: z.string(),
+    entities: z.array(z.string()),
+    actions: z.array(z.string()),
+    sourceSystem: z.string().nullable().optional(),
+    destinationSystem: z.string().nullable().optional(),
+    integrationType: z.enum(['sync', 'trigger', 'action', 'bidirectional', 'import', 'export']).nullable().optional(),
+  }),
+  matchedScenario: z.object({
+    scenarioId: z.string().nullable(),
+    confidence: z.number().min(0).max(100),
+    personalizedDescription: z.string(),
+    customizedCodeSnippet: z.string(),
+    reasoning: z.string(),
+    fallbackReason: z.string().nullable().optional(),
+  }),
 });
 
 const GeneratedScenarioSchema = z.object({
@@ -108,224 +163,120 @@ const GeneratedScenarioSchema = z.object({
   buildingBlocks: z.array(z.string()),
   codeExample: z.string(),
   howItWorks: z.array(z.string()).min(3).max(4),
-  initialSyncSteps: z.array(z.string()).optional(),
-  continuousSyncDetails: z
-    .object({
-      fromExternal: z.string().optional(),
-      toExternal: z.string().optional(),
-    })
-    .optional(),
 });
 
-export async function matchScenario(
-  parsedUseCase: ParsedUseCase,
-  companyContext?: { name: string; description?: string; industry?: string }
+export async function parseAndMatchScenario(
+  useCase: string,
+  companyContext: { name: string; description?: string; industry?: string },
+  persona: 'technical' | 'executive' | 'business' = 'executive'
 ): Promise<{
+  parsedUseCase: ParsedUseCase;
   scenario: ScenarioTemplate;
   confidence: number;
   personalizedDescription: string;
   codeSnippet: string;
   isGenerated?: boolean;
 } | null> {
-  if (!parsedUseCase.description) {
+  if (!useCase || useCase.trim().length === 0) {
     return null;
   }
 
   try {
-    const scenarioSummaries = scenarioTemplates.map((s) => ({
+    const relevantScenarios = preFilterScenarios(useCase);
+    const scenarioSummaries = relevantScenarios.map((s) => ({
       id: s.id,
       name: s.name,
       description: s.description,
       category: s.category,
-      keywords: s.keywords,
-      supportedApps: s.supportedApps.slice(0, 8),
+      keywords: s.keywords.slice(0, 5),
     }));
 
-    const systemPrompt = `You are an AI expert in integration patterns and Membrane's scenario templates.
+    const personaPrompts = {
+      technical: `You are a senior integration engineer helping developers implement production systems.`,
+      executive: `You are an expert technical advisor for Product Managers, VP of Product, and CTOs evaluating integration solutions.`,
+      business: `You are a business integration consultant helping Product Managers and Business Analysts design workflow solutions.`,
+    };
+
+    const systemPrompt = `${personaPrompts[persona]}
 
 Your task is to:
-1. Analyze the user's integration use case and company context
-2. Match it to the most appropriate scenario template from the provided list
-3. Provide a confidence score (0-100) for the match
-4. Personalize the description and code snippet for the company
+1. Parse the use case to extract technical requirements from a product leader's perspective
+2. Match it to the best scenario template that delivers business value
+3. Generate production-ready code that technical teams can implement
 
-Confidence scoring guidelines:
-- 90-100: Perfect match with all requirements aligned
-- 70-89: Strong match with most requirements met
-- 50-69: Partial match with some requirements met
-- 30-49: Weak match, may need customization
-- 0-29: No good match, would require custom solution
+Context: You're advising technical decision-makers who need to:
+- Reduce time-to-market for integrations
+- Minimize engineering resources required
+- Ensure scalability and reliability
+- Deliver measurable ROI to stakeholders
 
-If confidence is below 30, return null for scenarioId and explain why in fallbackReason.
+Step 1 - Parse and validate the use case:
+First, determine if this is a valid integration use case. Valid integration use cases involve:
+- Connecting two or more systems/applications
+- Synchronizing or transferring data between platforms
+- Automating workflows across different tools
+- Setting up webhooks, APIs, or data pipelines
+- Importing/exporting data between business systems
 
-When personalizing the code:
-- Show initial sync with pagination: membrane.sync.initial({ pageSize: 100 })
-- Include webhook subscription setup for real-time events
-- Demonstrate field mapping transformations
-- Show event handlers for created/updated/deleted operations
-- Use actual company systems and entities mentioned
-- Include error handling and retry logic
-- Keep code practical and implementation-ready
+If the use case is NOT about integration (e.g., "make me a sandwich", "write code", "explain something"):
+- Set all entities, actions, and systems to empty/null
+- This will naturally result in confidence: 0 in Step 2
 
-Available Membrane Scenario Templates:
+Otherwise, identify:
+- Entities/Objects: Business-critical data types (contacts, orders, invoices, etc.)
+- Actions/Operations: Operations that drive business outcomes (sync, import, export, create, update, etc.)
+- Source System: Where data originates (critical for data governance)
+- Destination System: Where data needs to flow (for operational efficiency)
+- Integration Type: Pattern that best serves product goals (sync, bidirectional, trigger, import, export)
+
+Step 2 - Match to scenario:
+- Find the best matching scenario that Product/Engineering leaders would approve
+- Score confidence (0-100) based on technical feasibility and business alignment
+- Consider implementation complexity vs. value delivered
+- If confidence < 30, set scenarioId to null
+
+Step 3 - Generate production-ready code:
+${
+  persona === 'technical'
+    ? '- Full implementation with detailed comments and error handling\n- Show all technical patterns: pagination, webhooks, retries, field mapping\n- Include advanced features like rate limiting and circuit breakers\n- Keep it comprehensive (~80-100 lines)'
+    : persona === 'business'
+      ? '- Simplified pseudo-code focusing on business logic flow\n- Emphasize data transformations and workflow steps\n- Show key integration points without implementation details\n- Keep it readable for non-developers (~40-60 lines)'
+      : '- Code that a CTO would approve for production deployment\n- Show enterprise patterns: pagination, webhooks, field mapping\n- Include monitoring and error handling that VP Engineering requires\n- Keep it practical and maintainable (~60-80 lines)\n- Focus on scalability and reliability'
+}
+
+Available Scenarios (pre-filtered for relevance):
 ${JSON.stringify(scenarioSummaries, null, 2)}`;
 
-    const userPrompt = `Company: ${companyContext?.name || 'Your Company'}
-${companyContext?.description ? `Description: ${companyContext.description}` : ''}
-${companyContext?.industry ? `Industry: ${companyContext.industry}` : ''}
+    const userPrompt = `Company: ${companyContext.name}
+${companyContext.description ? `Description: ${companyContext.description}` : ''}
+${companyContext.industry ? `Industry: ${companyContext.industry}` : ''}
 
-Use Case: ${parsedUseCase.description}
-Entities: ${parsedUseCase.entities.join(', ') || 'Not specified'}
-Actions: ${parsedUseCase.actions.join(', ') || 'Not specified'}
-${parsedUseCase.sourceSystem ? `Source System: ${parsedUseCase.sourceSystem}` : ''}
-${parsedUseCase.destinationSystem ? `Destination System: ${parsedUseCase.destinationSystem}` : ''}
-${parsedUseCase.integrationType ? `Integration Type: ${parsedUseCase.integrationType}` : ''}
+Use Case: ${useCase}
 
-Select the best matching scenario from the available templates and customize it for this company and use case.`;
+As a technical advisor to Product Managers and CTOs, analyze this use case, extract the requirements, match to a scenario, and generate production-ready Membrane SDK code that engineering teams can implement immediately.`;
 
-    const result = await queryGpt(systemPrompt, userPrompt, MatchedScenarioSchema);
+    const result = await queryGpt(systemPrompt, userPrompt, CombinedAnalysisSchema);
 
-    if (!result.scenarioId || result.confidence < 30) {
-      return await generateCustomScenario(parsedUseCase, companyContext);
+    if (!result.matchedScenario.scenarioId || result.matchedScenario.confidence < 30) {
+      return null; // Return null for invalid/non-integration requests
     }
 
-    const matchedScenario = scenarioTemplates.find((s) => s.id === result.scenarioId);
+    const matchedScenario = relevantScenarios.find((s) => s.id === result.matchedScenario.scenarioId);
 
     if (!matchedScenario) {
-      return await generateCustomScenario(parsedUseCase, companyContext);
+      return null; // Return null if no matching scenario found
     }
 
-    const scenarioWithConfidence = { ...matchedScenario, confidence: result.confidence };
-
     return {
-      scenario: scenarioWithConfidence,
-      confidence: result.confidence,
-      personalizedDescription: result.personalizedDescription,
-      codeSnippet: result.customizedCodeSnippet,
+      parsedUseCase: result.parsedUseCase,
+      scenario: { ...matchedScenario, confidence: result.matchedScenario.confidence },
+      confidence: result.matchedScenario.confidence,
+      personalizedDescription: result.matchedScenario.personalizedDescription,
+      codeSnippet: result.matchedScenario.customizedCodeSnippet,
       isGenerated: false,
     };
   } catch (error) {
-    console.error('Error matching scenario:', error);
-
-    return await generateCustomScenario(parsedUseCase, companyContext);
-  }
-}
-
-async function generateCustomScenario(
-  parsedUseCase: ParsedUseCase,
-  companyContext?: { name: string; description?: string; industry?: string }
-): Promise<{
-  scenario: ScenarioTemplate;
-  confidence: number;
-  personalizedDescription: string;
-  codeSnippet: string;
-  isGenerated: boolean;
-}> {
-  try {
-    const systemPrompt = `You are an AI expert in creating custom integration scenarios for Membrane.
-
-Create a completely custom scenario based on the user's specific needs.
-The scenario should:
-1. Have a clear, descriptive name
-2. Include relevant keywords and supported applications
-3. Select appropriate building blocks from: actions, events, flows, data-collections, unified-data-models, field-mappings
-4. Provide production-ready Membrane SDK code example
-5. Include 3-4 technical "how it works" steps following this pattern:
-   - Initial Sync: How data is imported/exported initially
-   - Continuous Sync (External): How updates from external apps are received
-   - Continuous Sync (Your App): How your app sends updates
-   - Data Transformation: How field mapping and validation works
-
-Code should demonstrate:
-- Pagination for initial data sync
-- Webhook/event subscription setup
-- Field mapping and transformation
-- Error handling and retries
-- Real-time vs batch processing options`;
-
-    const userPrompt = `Company: ${companyContext?.name || 'Your Company'}
-${companyContext?.description ? `Description: ${companyContext.description}` : ''}
-${companyContext?.industry ? `Industry: ${companyContext.industry}` : ''}
-
-Use Case: ${parsedUseCase.description}
-Entities: ${parsedUseCase.entities.join(', ') || 'Not specified'}
-Actions: ${parsedUseCase.actions.join(', ') || 'Not specified'}
-${parsedUseCase.sourceSystem ? `Source System: ${parsedUseCase.sourceSystem}` : ''}
-${parsedUseCase.destinationSystem ? `Destination System: ${parsedUseCase.destinationSystem}` : ''}
-${parsedUseCase.integrationType ? `Integration Type: ${parsedUseCase.integrationType}` : ''}
-
-Generate a custom Membrane integration scenario for this specific use case.`;
-
-    const generatedScenario = await queryGpt(systemPrompt, userPrompt, GeneratedScenarioSchema);
-
-    const mappedCategory = mapToValidCategory(generatedScenario.category);
-
-    const filteredBlocks = validateAndMapBuildingBlocks(generatedScenario.buildingBlocks);
-
-    const customScenario: ScenarioTemplate = {
-      id: `custom-generated-${Date.now()}`,
-      name: generatedScenario.name,
-      description: generatedScenario.description,
-      category: mappedCategory,
-      keywords: generatedScenario.keywords,
-      supportedApps: generatedScenario.supportedApps,
-      buildingBlocks: filteredBlocks,
-      codeExample: generatedScenario.codeExample,
-      howItWorks: generatedScenario.howItWorks,
-      confidence: 85,
-    };
-
-    return {
-      scenario: customScenario,
-      confidence: 85,
-      personalizedDescription: generatedScenario.description,
-      codeSnippet: generatedScenario.codeExample,
-      isGenerated: true,
-    };
-  } catch (error) {
-    console.error('Error generating custom scenario:', error);
-
-    const fallbackScenario: ScenarioTemplate = {
-      id: `custom-fallback-${Date.now()}`,
-      name: 'Custom Integration Solution',
-      description: `Build a custom integration for ${companyContext?.name || 'your organization'} to connect your systems and automate workflows.`,
-      category: 'workflow-automation',
-      keywords: parsedUseCase.entities.concat(parsedUseCase.actions),
-      supportedApps: [parsedUseCase.sourceSystem, parsedUseCase.destinationSystem].filter(Boolean) as string[],
-      buildingBlocks: ['actions', 'flows'],
-      codeExample: `const membrane = require('@membrane/sdk');
-
-const integration = membrane.integration({
-  name: 'Custom Integration',
-  description: '${parsedUseCase.description}',
-});
-
-integration.connect({
-  source: '${parsedUseCase.sourceSystem || 'source_system'}',
-  destination: '${parsedUseCase.destinationSystem || 'destination_system'}',
-});
-
-integration.on('data', async (data) => {
-  const processed = await processData(data);
-  await integration.send(processed);
-});
-
-integration.start();`,
-      howItWorks: [
-        'Connect to your data sources',
-        'Process and transform data',
-        'Sync to destination systems',
-        'Monitor and manage integration',
-      ],
-      confidence: 50,
-    };
-
-    return {
-      scenario: fallbackScenario,
-      confidence: 50,
-      personalizedDescription: fallbackScenario.description,
-      codeSnippet: fallbackScenario.codeExample,
-      isGenerated: true,
-    };
+    console.error('Error in parseAndMatchScenario:', error);
+    return null;
   }
 }

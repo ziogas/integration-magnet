@@ -24,14 +24,26 @@ export function LoadingState() {
 
   useEffect(() => {
     if (!isLoading) {
-      setMessageIndex(0);
-      setProgress(0);
-      return;
+      const completeInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(completeInterval);
+            setTimeout(() => {
+              setProgress(0);
+              setMessageIndex(0);
+            }, 600);
+            return 100;
+          }
+          return Math.min(prev + 10, 100);
+        });
+      }, 20);
+
+      return () => clearInterval(completeInterval);
     }
 
     const messageInterval = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-    }, 20000);
+    }, 5000);
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -44,12 +56,10 @@ export function LoadingState() {
     return () => {
       clearInterval(messageInterval);
       clearInterval(progressInterval);
-      setMessageIndex(0);
-      setProgress(0);
     };
   }, [isLoading]);
 
-  if (!isLoading) return null;
+  if (!isLoading && progress === 0) return null;
 
   const currentMessage = LOADING_MESSAGES[messageIndex];
 
@@ -80,7 +90,7 @@ export function LoadingState() {
               <div
                 className={cn(
                   'absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 to-blue-500',
-                  'transition-all duration-[10000ms] ease-out rounded-full'
+                  'transition-all duration-300 ease-out rounded-full'
                 )}
                 style={{ width: `${progress}%` }}
               >

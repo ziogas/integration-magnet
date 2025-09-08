@@ -140,6 +140,10 @@
 }
 
 @layer utilities {
+  .required::after {
+    content: ' *';
+    @apply text-destructive ml-0.5;
+  }
   /* Gradient backgrounds for buttons and CTAs */
   .gradient-primary {
     background: var(--gradient-primary);

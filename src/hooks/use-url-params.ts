@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 export function useUrlParams() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const updateUrlParams = useCallback(
     (params: Record<string, string>) => {
@@ -20,7 +21,14 @@ export function useUrlParams() {
       });
 
       const queryString = newSearchParams.toString();
-      router.push(queryString ? `?${queryString}` : '/', { scroll: false });
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = setTimeout(() => {
+        router.push(queryString ? `?${queryString}` : '/', { scroll: false });
+      }, 300);
     },
     [searchParams, router]
   );

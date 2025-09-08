@@ -1,24 +1,14 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 import { ArrowRight, Calendar } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ApiKeyDialog } from './api-key-dialog';
 
 export function StickyFooter() {
-  const searchParams = useSearchParams();
-  const [email, setEmail] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  useEffect(() => {
-    const emailParam = searchParams.get('email');
-    if (emailParam) {
-      setEmail(decodeURIComponent(emailParam));
-    }
-  }, [searchParams]);
 
   const handleBookDemo = () => {
     window.open('https://integration.app/book-a-demo', '_blank');
@@ -69,7 +59,7 @@ export function StickyFooter() {
         </div>
       </div>
 
-      <ApiKeyDialog open={isModalOpen} onOpenChange={setIsModalOpen} defaultEmail={email} />
+      <ApiKeyDialog open={isModalOpen} onOpenChange={setIsModalOpen} />
     </>
   );
 }

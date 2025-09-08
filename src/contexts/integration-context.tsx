@@ -1,9 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { useUrlParams } from '@/hooks/use-url-params';
 import { toast } from 'sonner';
-import type { CompanyContext, ScenarioGenerationResult } from '@/types';
+import { useUrlParams } from '@/hooks/use-url-params';
+import type { CompanyContext, ScenarioGenerationResult, Persona } from '@/types';
 import { EXAMPLE_PROMPTS } from '@/components/integration-generator/constants';
 import { scrapeCompanyDetails } from '@/actions/company-scraper';
 import { generateScenario } from '@/actions/generate-scenario';
@@ -12,18 +12,22 @@ type IntegrationState = {
   domain: string;
   domainError: string;
   useCase: string;
+  persona: Persona;
   isLoading: boolean;
   showResults: boolean;
   companyContext: CompanyContext | null;
   scenarioResult: ScenarioGenerationResult | null;
+  email: string;
+  noMatch: boolean;
 };
 
 type IntegrationContextType = IntegrationState & {
   setDomain: (domain: string) => void;
   setDomainError: (error: string) => void;
   setUseCase: (useCase: string) => void;
-  generateIntegration: () => Promise<void>;
-  handleFormSubmit: (domain: string, useCase: string) => Promise<void>;
+  setPersona: (persona: Persona) => void;
+  setEmail: (email: string) => void;
+  handleFormSubmit: () => Promise<void>;
   resetState: () => void;
 };
 
@@ -33,10 +37,13 @@ const initialState: IntegrationState = {
   domain: '',
   domainError: '',
   useCase: '',
+  persona: 'executive',
   isLoading: false,
   showResults: false,
   companyContext: null,
   scenarioResult: null,
+  email: '',
+  noMatch: false,
 };
 
 export function IntegrationProvider({ children }: { children: ReactNode }) {
@@ -50,16 +57,21 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     const domainParam = getParam('domain');
     const emailParam = getParam('email');
     const useCaseParam = getParam('usecase');
+    const personaParam = getParam('persona') as Persona;
 
     if (domainParam) {
       const cleanDomain = domainParam.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
       setState((prev) => ({ ...prev, domain: cleanDomain }));
     }
 
-    if (emailParam && !domainParam) {
-      const emailDomain = emailParam.split('@')[1];
-      if (emailDomain) {
-        setState((prev) => ({ ...prev, domain: emailDomain }));
+    if (emailParam) {
+      if (!domainParam) {
+        const emailDomain = emailParam.split('@')[1];
+        if (emailDomain) {
+          setState((prev) => ({ ...prev, email: emailParam, domain: emailDomain }));
+        }
+      } else {
+        setState((prev) => ({ ...prev, email: emailParam }));
       }
     }
 
@@ -68,6 +80,10 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
       if (!isNaN(exampleIndex) && exampleIndex >= 1 && exampleIndex <= EXAMPLE_PROMPTS.length) {
         setState((prev) => ({ ...prev, useCase: EXAMPLE_PROMPTS[exampleIndex - 1] }));
       }
+    }
+
+    if (personaParam) {
+      setState((prev) => ({ ...prev, persona: personaParam }));
     }
 
     setIsInitialized(true);
@@ -89,80 +105,102 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, useCase: useCase }));
   }, []);
 
+  const setPersona = useCallback((persona: Persona) => {
+    setState((prev) => ({ ...prev, persona }));
+  }, []);
+
+  const setEmail = useCallback((email: string) => {
+    setState((prev) => ({ ...prev, email }));
+  }, []);
+
   const resetState = useCallback(() => {
     setState(initialState);
     clearParams();
   }, [clearParams]);
 
-  const handleFormSubmit = useCallback(
-    async (domain: string, useCase: string) => {
-      if (!domain || !useCase) {
-        toast.error('Please fill in all required fields correctly');
-        return;
-      }
+  const handleFormSubmit = useCallback(async () => {
+    if (!state.domain || !state.useCase || !state.persona) {
+      toast.error('Please fill in all required fields correctly');
+      return;
+    }
 
-      setState((prev) => ({
-        ...prev,
-        domain,
-        useCase,
-        isLoading: true,
-        showResults: false,
-        companyContext: null,
-        scenarioResult: null,
-      }));
+    const cleanDomain = state.domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 
-      updateUrlParams({ domain });
+    setState((prev) => ({
+      ...prev,
+      domain: cleanDomain,
+      isLoading: true,
+      showResults: false,
+      companyContext: null,
+      scenarioResult: null,
+      noMatch: false,
+    }));
 
-      try {
-        const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    updateUrlParams({ domain: cleanDomain });
 
-        const { data: companyContext, hasFullData } = await scrapeCompanyDetails(cleanDomain);
+    try {
+      const { data: companyContext, hasFullData, error: scrapeError } = await scrapeCompanyDetails(cleanDomain);
 
-        if (!hasFullData) {
-          toast.warning('Could not extract full company details.', {
-            duration: 4000,
-          });
-        }
-
-        const scenarioResult = await generateScenario(companyContext, useCase);
-
-        if (!scenarioResult.success) {
-          throw new Error(scenarioResult.error || 'Failed to generate scenario');
-        }
-
-        setState((prev) => ({
-          ...prev,
-          companyContext,
-          scenarioResult: scenarioResult.data!,
-          isLoading: false,
-          showResults: true,
-        }));
-
-        toast.success('Integration scenario generated successfully!');
-      } catch (error) {
-        console.error('Error generating integration:', error);
-
+      if (scrapeError) {
+        toast.error(scrapeError, {
+          duration: 5000,
+        });
         setState((prev) => ({
           ...prev,
           isLoading: false,
           showResults: false,
         }));
+        return;
+      }
 
-        toast.error('Failed to generate integration scenario. Please try again.', {
-          duration: 5000,
+      if (!hasFullData) {
+        toast.warning('Using limited company information. Results may be less accurate.', {
+          duration: 4000,
         });
       }
-    },
-    [updateUrlParams]
-  );
 
-  const generateIntegration = useCallback(async () => {
-    if (!state.domain || !state.useCase || state.domainError) {
-      toast.error('Please fill in all required fields correctly');
-      return;
+      const scenarioResult = await generateScenario(companyContext, state.useCase, state.persona);
+
+      if (scenarioResult.noMatch) {
+        setState((prev) => ({
+          ...prev,
+          companyContext,
+          isLoading: false,
+          showResults: true,
+          noMatch: true,
+        }));
+        return;
+      }
+
+      if (!scenarioResult.success) {
+        throw new Error(scenarioResult.error || 'Failed to generate scenario');
+      }
+
+      setState((prev) => ({
+        ...prev,
+        companyContext,
+        scenarioResult: scenarioResult.data!,
+        isLoading: false,
+        showResults: true,
+        noMatch: false,
+      }));
+
+      toast.success('Integration scenario generated successfully!');
+    } catch (error) {
+      console.error('Error generating integration:', error);
+
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        showResults: false,
+      }));
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate integration scenario';
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     }
-    await handleFormSubmit(state.domain, state.useCase);
-  }, [state.domain, state.useCase, state.domainError, handleFormSubmit]);
+  }, [state.domain, state.persona, state.useCase, updateUrlParams]);
 
   return (
     <IntegrationContext.Provider
@@ -171,7 +209,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         setDomain,
         setDomainError,
         setUseCase,
-        generateIntegration,
+        setPersona,
+        setEmail,
         handleFormSubmit,
         resetState,
       }}
