@@ -84,13 +84,6 @@ yarn format     # Format code
 3. Generates custom code for your use case
 4. Shows code in your preferred style (technical/business/executive)
 
-## Limitations
-
-- Requires OpenAI API (costs apply)
-- Generated code needs customization for complex cases
-- Only generates JavaScript/TypeScript
-- Response time: 3-5 seconds without cache
-
 ## Environment Variables
 
 | Variable                       | Required | Description                                      |
@@ -102,13 +95,3 @@ yarn format     # Format code
 | `UPSTASH_REDIS_REST_TOKEN`     | No       | Upstash REST token                               |
 | `NEXT_PUBLIC_POSTHOG_KEY`      | No       | PostHog analytics key                            |
 | `NEXT_PUBLIC_POSTHOG_HOST`     | No       | PostHog host (default: https://us.i.posthog.com) |
-
-## Contributing
-
-1. Use Yarn (not npm)
-2. Run `yarn lint` before committing
-3. Keep it simple
-
-## License
-
-MIT

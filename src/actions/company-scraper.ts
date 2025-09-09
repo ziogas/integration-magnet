@@ -67,11 +67,6 @@ export async function scrapeCompanyDetails(
     console.error('Redis cache read error:', error);
   }
 
-  if (!process.env.FIRECRAWL_API_KEY) {
-    console.warn('FIRECRAWL_API_KEY not found');
-    return { data: fallbackData, hasFullData: false };
-  }
-
   try {
     await fetch(url, {
       method: 'HEAD',
@@ -101,7 +96,7 @@ export async function scrapeCompanyDetails(
     try {
       result = await attemptScrape();
     } catch (secondError) {
-      console.error('Both scrape attempts failed:', secondError);
+      console.error(`Both scrape attempts failed to get (${url}):`, secondError);
       scrapeError = secondError;
     }
   }

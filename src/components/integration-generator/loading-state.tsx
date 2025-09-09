@@ -44,7 +44,7 @@ export function LoadingState() {
 
     const messageInterval = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-    }, 5000);
+    }, 7500);
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
