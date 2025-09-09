@@ -13,6 +13,7 @@ Transform natural language into production-ready integration code using AI.
 ### Setup
 
 1. **Clone and install:**
+
 ```bash
 git clone https://github.com/ziogas/integration-magnet.git
 cd integration-magnet
@@ -23,6 +24,7 @@ yarn install
 2. **Add environment variables:**
 
 Create `.env.local`:
+
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
 FIRECRAWL_API_KEY=your_firecrawl_api_key_here
@@ -40,6 +42,7 @@ NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 3. **Run:**
+
 ```bash
 yarn dev
 ```
@@ -90,13 +93,15 @@ yarn format     # Format code
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | OpenAI API key |
-| `UPSTASH_REDIS_REST_URL` | No | Redis cache URL |
-| `UPSTASH_REDIS_REST_TOKEN` | No | Redis auth token |
-| `NEXT_PUBLIC_POSTHOG_KEY` | No | Analytics key |
-| `FIRECRAWL_API_KEY` | No | Logo fetching |
+| Variable                       | Required | Description                                      |
+| ------------------------------ | -------- | ------------------------------------------------ |
+| `OPENAI_API_KEY`               | Yes      | OpenAI API key                                   |
+| `FIRECRAWL_API_KEY`            | Yes      | Firecrawl API key (web crawling/extraction)      |
+| `NEXT_PUBLIC_LOGO_DEV_API_KEY` | Yes      | logo.dev api key                                 |
+| `UPSTASH_REDIS_REST_URL`       | No       | Upstash REST URL for caching                     |
+| `UPSTASH_REDIS_REST_TOKEN`     | No       | Upstash REST token                               |
+| `NEXT_PUBLIC_POSTHOG_KEY`      | No       | PostHog analytics key                            |
+| `NEXT_PUBLIC_POSTHOG_HOST`     | No       | PostHog host (default: https://us.i.posthog.com) |
 
 ## Contributing
 

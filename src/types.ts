@@ -47,13 +47,6 @@ export type ScenarioTemplate = {
   confidence?: number;
 };
 
-export type OpenAIResponse = {
-  parsedUseCase?: ParsedUseCase;
-  matchedScenario?: ScenarioTemplate;
-  confidence: number;
-  error?: string;
-};
-
 export type ScenarioGenerationResult = {
   companyContext: CompanyContext;
   parsedUseCase: ParsedUseCase;
@@ -67,34 +60,10 @@ export type ScenarioGenerationResult = {
 
 export type Persona = 'technical' | 'executive' | 'business';
 
-export type FormData = {
-  domain: string;
-  useCase: string;
-  persona: Persona;
-  email?: string;
-  gdprConsent?: boolean;
-};
-
-export type Lead = {
-  email: string;
-  domain: string;
-  companyName?: string;
-  useCase: string;
-  scenarioId?: string;
-  timestamp: Date;
-  utmSource?: string;
-  utmMedium?: string;
-  utmCampaign?: string;
-};
-
-export type AnalyticsEvent = {
-  name: string;
-  properties: Record<string, unknown>;
-  timestamp: Date;
-};
-
-export type AppError = {
-  code: string;
-  message: string;
-  details?: unknown;
-};
+export type BuildingBlockType =
+  | 'actions'
+  | 'events'
+  | 'flows'
+  | 'data-collections'
+  | 'unified-data-models'
+  | 'field-mappings';

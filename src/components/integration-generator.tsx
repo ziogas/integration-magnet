@@ -1,6 +1,8 @@
 'use client';
 
+import { Suspense } from 'react';
 import { IntegrationProvider, useIntegration } from '@/contexts/integration-context';
+
 import { HeroSection } from './integration-generator/hero-section';
 import { FormSection } from './integration-generator/form-section';
 import { LoadingState } from './integration-generator/loading-state';
@@ -44,8 +46,10 @@ function IntegrationGeneratorContent() {
 
 export function IntegrationGenerator() {
   return (
-    <IntegrationProvider>
-      <IntegrationGeneratorContent />
-    </IntegrationProvider>
+    <Suspense fallback={null}>
+      <IntegrationProvider>
+        <IntegrationGeneratorContent />
+      </IntegrationProvider>
+    </Suspense>
   );
 }

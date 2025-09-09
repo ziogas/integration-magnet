@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Sparkles } from 'lucide-react';
+
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles } from 'lucide-react';
 import { useIntegration } from '@/contexts/integration-context';
 import { cn } from '@/lib/utils';
 

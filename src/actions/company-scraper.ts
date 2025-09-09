@@ -7,14 +7,19 @@ import { redis } from '@/lib/redis';
 
 function extractCompanyName(domain: string, title?: string): string {
   if (title) {
-    const cleanTitle = title.split(/[|–-]/)[0].trim();
+    // Handle various separators including em dash, en dash, hyphen, pipe, colon
+    const cleanTitle = title.split(/[|–—\-:]/)[0].trim();
     if (cleanTitle.length > 2 && cleanTitle.length < 50) {
       return cleanTitle;
     }
   }
 
   const nameFromDomain = domain.split('.')[0];
-  return nameFromDomain.charAt(0).toUpperCase() + nameFromDomain.slice(1);
+  // Handle multi-word domains (e.g., "my-company" -> "My Company")
+  return nameFromDomain
+    .split(/[-_]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 function getErrorMessage(error: unknown): string | undefined {

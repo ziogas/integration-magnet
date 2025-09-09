@@ -5,6 +5,7 @@ This document explains how data flows through the Integration Magnet application
 ## Overview
 
 The system follows a multi-stage pipeline:
+
 1. **Form Input** → 2. **Company Scraping** → 3. **Scenario Matching** → 4. **Code Generation** → 5. **Results Display**
 
 ## Data Flow Stages
@@ -12,11 +13,13 @@ The system follows a multi-stage pipeline:
 ### 1. Form Submission (`/src/contexts/integration-context.tsx`)
 
 **Input Data:**
+
 - `domain`: Company domain (e.g., "gong.io")
 - `useCase`: Integration use case description
 - `persona`: User type (technical/executive/business)
 
 **Process:**
+
 ```typescript
 handleSubmit() {
   // Clean and validate domain
@@ -31,14 +34,16 @@ handleSubmit() {
 **Input:** Domain name
 
 **Process:**
+
 1. Check Redis cache for existing company data (7-day TTL)
 2. If not cached:
    - Verify domain accessibility (HEAD request with 5s timeout)
    - Scrape website using Firecrawl API (2 attempts with retry)
    - Extract company metadata (name, description, industry)
-3. Generate logo URLs via Clearbit API
+3. Generate logo URLs via logo.dev
 
 **Output:**
+
 ```typescript
 CompanyContext {
   url: string
@@ -56,6 +61,7 @@ CompanyContext {
 **Input:** CompanyContext + Use Case + Persona
 
 **Process:**
+
 1. **Pre-filtering:** Score and rank scenarios by keyword relevance (top 30)
 2. **GPT Analysis:**
    - Parse use case to extract entities, actions, systems
@@ -65,6 +71,7 @@ CompanyContext {
    - Generate custom code snippet
 
 **Output:**
+
 ```typescript
 {
   parsedUseCase: {
@@ -83,6 +90,7 @@ CompanyContext {
 **Input:** Matched scenario + Company context + Parsed use case
 
 **Process:**
+
 - Generate JSON specification with:
   - Company metadata
   - Integration configuration
@@ -95,9 +103,10 @@ CompanyContext {
 ### 5. Results Rendering (`/src/components/integration-generator/results-section.tsx`)
 
 **Display Components:**
+
 1. **Company Card:** Logo, name, description
 2. **Scenario Card:** Name, description, confidence badge
-3. **Implementation Card:** 
+3. **Implementation Card:**
    - Membrane SDK code snippet
    - JSON specification
    - Copy-to-clipboard functionality
@@ -114,10 +123,10 @@ The entire flow is orchestrated by `IntegrationProvider` context which maintains
 IntegrationState {
   // Input state
   domain, useCase, persona
-  
+
   // Processing state
   isLoading, showResults, noMatch
-  
+
   // Result state
   companyContext, scenarioResult
 }
@@ -142,6 +151,7 @@ Each stage includes fallback mechanisms:
 ## Analytics Integration
 
 PostHog events track the entire flow:
+
 - `form_submitted`: Initial submission with context
 - `integration_generated`: Successful generation with scenario details
 - `integration_failed`: Failures with error types

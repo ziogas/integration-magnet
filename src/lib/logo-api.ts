@@ -1,8 +1,11 @@
 export function getCompanyLogoUrl(domain: string, size: number = 256): string {
   const cleanDomain = domain
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .split('/')[0];
+    .trim()
+    .toLowerCase()
+    .replace(/^(https?:)?\/\//, '')
+    .replace(/^www\d?\./, '')
+    .split(/[\/?#]/)[0]
+    .split(':')[0];
   const apiKey = process.env.NEXT_PUBLIC_LOGO_DEV_API_KEY;
 
   return `https://img.logo.dev/${cleanDomain}?token=${apiKey}&size=${size}`;

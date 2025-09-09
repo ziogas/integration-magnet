@@ -5,8 +5,7 @@ import type { ScenarioTemplate, CompanyContext, ParsedUseCase } from '@/types';
 export async function generateJsonSpec(
   scenario: ScenarioTemplate,
   companyContext: CompanyContext,
-  parsedUseCase: ParsedUseCase,
-  _persona: 'technical' | 'executive' | 'business' = 'executive'
+  parsedUseCase: ParsedUseCase
 ): Promise<Record<string, unknown>> {
   const isBidirectional =
     parsedUseCase.integrationType === 'bidirectional' || scenario.category === 'bi-directional-sync';

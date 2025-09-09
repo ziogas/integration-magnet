@@ -1,12 +1,23 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 export function useUrlParams() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pathname = usePathname();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Ensure any pending debounced navigation is cancelled on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const updateUrlParams = useCallback(
     (params: Record<string, string>) => {
@@ -27,10 +38,11 @@ export function useUrlParams() {
       }
 
       timeoutRef.current = setTimeout(() => {
-        router.push(queryString ? `?${queryString}` : '/', { scroll: false });
+        const replacementUrl = `${pathname}${queryString ? `?${queryString}` : ''}`;
+        router.push(replacementUrl, { scroll: false });
       }, 300);
     },
-    [searchParams, router]
+    [searchParams, router, pathname]
   );
 
   const getParam = useCallback(
@@ -41,8 +53,8 @@ export function useUrlParams() {
   );
 
   const clearParams = useCallback(() => {
-    router.push('/', { scroll: false });
-  }, [router]);
+    router.push(pathname, { scroll: false });
+  }, [router, pathname]);
 
   return {
     updateUrlParams,

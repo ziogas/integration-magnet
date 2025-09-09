@@ -1,10 +1,16 @@
+import 'server-only';
 import FirecrawlApp, { type ScrapeOptions } from '@mendable/firecrawl-js';
 
 if (globalThis.window) {
   throw new Error('Crawling is not supported in the browser');
 }
 
-const app = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
+const apiKey = process.env.FIRECRAWL_API_KEY;
+if (!apiKey) {
+  throw new Error('FIRECRAWL_API_KEY is not set');
+}
+
+const app = new FirecrawlApp({ apiKey });
 
 export const defaultScrapeParams: ScrapeOptions = {
   formats: ['markdown'],

@@ -24,8 +24,15 @@ export function ApiKeyDialog({ open, onOpenChange }: ApiKeyDialogProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   async function handleSubmit() {
-    if (!email) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       toast.error('Please enter your email');
+      return;
+    }
+    // Basic email sanity check; adjust if you need stricter "work email" rules
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(trimmedEmail)) {
+      toast.error('Enter a valid work email');
       return;
     }
     if (!agreedToTerms) {
@@ -34,18 +41,19 @@ export function ApiKeyDialog({ open, onOpenChange }: ApiKeyDialogProps) {
     }
 
     setIsSubmitting(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    toast.success('Magic link sent! Check your email to complete signup and get your API key.', {
-      duration: 10000,
-    });
-
-    trackEvent('api_key_requested');
-
-    setAgreedToTerms(false);
-    setIsSubmitting(false);
-    onOpenChange(false);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      toast.success('Magic link sent! Check your email to complete signup and get your API key.', {
+        duration: 10000,
+      });
+      trackEvent('api_key_requested', { source: 'api_key_dialog' });
+      setAgreedToTerms(false);
+      onOpenChange(false);
+    } catch {
+      toast.error('Something went wrong while sending the magic link. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (

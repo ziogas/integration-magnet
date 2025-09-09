@@ -1,9 +1,9 @@
 'use server';
 
-import { parseAndMatchScenario } from './scenario-matcher';
-import { generateJsonSpec } from './code-generator';
 import { getApplicationLogoUrl } from '@/lib/logo-api';
 import type { ScenarioGenerationResult, CompanyContext } from '@/types';
+import { parseAndMatchScenario } from './scenario-matcher';
+import { generateJsonSpec } from './code-generator';
 
 export async function generateScenario(
   companyContext: CompanyContext,
@@ -41,7 +41,7 @@ export async function generateScenario(
 
     const [applicationLogos, jsonSpec] = await Promise.all([
       Promise.resolve(scenario.supportedApps.slice(0, 8).map((app) => getApplicationLogoUrl(app))),
-      generateJsonSpec(scenario, companyContext, parsedUseCase, persona),
+      generateJsonSpec(scenario, companyContext, parsedUseCase),
     ]);
 
     const result: ScenarioGenerationResult = {

@@ -3,6 +3,7 @@
 This document contains the exact prompts used in the Integration Magnet application, extracted directly from the source code.
 
 ## Scenario Matching Prompts
+
 **Source:** `/src/actions/scenario-matcher.ts`
 
 ### Persona Context Definitions
@@ -10,8 +11,10 @@ This document contains the exact prompts used in the Integration Magnet applicat
 ```javascript
 const personaContext = {
   technical: 'a senior integration engineer helping developers implement production systems',
-  business: 'a business integration consultant helping Product Managers and Business Analysts design workflow solutions',
-  executive: 'an expert technical advisor for Product Managers, VP of Product, and CTOs evaluating integration solutions',
+  business:
+    'a business integration consultant helping Product Managers and Business Analysts design workflow solutions',
+  executive:
+    'an expert technical advisor for Product Managers, VP of Product, and CTOs evaluating integration solutions',
 };
 ```
 
@@ -105,6 +108,7 @@ const AnalysisSchema = z.object({
 The Step 3 code generation instructions vary by persona:
 
 #### Technical Persona
+
 ```
 Full implementation with detailed comments and error handling
 - Show all technical patterns: pagination, webhooks, retries, field mapping
@@ -113,6 +117,7 @@ Full implementation with detailed comments and error handling
 ```
 
 #### Business Persona
+
 ```
 Simplified pseudo-code focusing on business logic flow
 - Emphasize data transformations and workflow steps
@@ -121,6 +126,7 @@ Simplified pseudo-code focusing on business logic flow
 ```
 
 #### Executive Persona
+
 ```
 Code that a CTO would approve for production deployment
 - Show enterprise patterns: pagination, webhooks, field mapping
@@ -147,6 +153,7 @@ The prompts include several dynamic variables that are inserted at runtime:
 ### Pre-filtering Strategy
 
 Before sending to GPT, scenarios are pre-filtered using the `preFilterScenarios` function which:
+
 1. Combines scenario name and description for text matching
 2. Uses Set for efficient word deduplication
 3. Scores based on:
@@ -165,6 +172,7 @@ Before sending to GPT, scenarios are pre-filtered using the `preFilterScenarios`
 ### Error Handling
 
 The function includes try-catch error handling that:
+
 - Logs errors to console
 - Returns `null` on any error
 - Allows graceful fallback in the UI

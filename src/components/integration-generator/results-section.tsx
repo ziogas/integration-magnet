@@ -1,7 +1,6 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 import {
   Globe,
   Sparkles,
@@ -23,21 +22,16 @@ import {
   Server,
   type LucideIcon,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CodeBlock, CodeBlockCopyButton } from '@/components/ai-elements/code-block';
 import { useIntegration } from '@/contexts/integration-context';
 import { getCompanyLogoUrl, getApplicationLogoUrl } from '@/lib/logo-api';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/posthog';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import { SectionCard } from './section-card';
-
-type CompanyContext = {
-  name: string;
-  domain: string;
-  description?: string;
-  industry?: string;
-};
+import type { CompanyContext, ScenarioTemplate, BuildingBlockType } from '@/types';
 
 type ScenarioResult = {
   confidence: number;
@@ -45,16 +39,7 @@ type ScenarioResult = {
   applicationLogos?: string[];
   codeSnippet?: string;
   jsonSpec?: Record<string, unknown>;
-  matchedScenario: {
-    name: string;
-    description: string;
-    category: string;
-    supportedApps: string[];
-    howItWorks: string[];
-    buildingBlocks: string[];
-    codeExample: string;
-    jsonSpec: Record<string, unknown>;
-  };
+  matchedScenario: ScenarioTemplate;
 };
 
 type ApplicationLogoProps =
@@ -96,8 +81,6 @@ function ApplicationLogo({ appName, logoUrl }: ApplicationLogoProps) {
     </>
   );
 }
-
-type BuildingBlockType = 'actions' | 'events' | 'flows' | 'data-collections' | 'unified-data-models' | 'field-mappings';
 
 const buildingBlockConfig: Record<
   BuildingBlockType,
@@ -525,11 +508,11 @@ function MatchedScenarioCard({ scenarioResult }: { scenarioResult: ScenarioResul
 
       <div className="flex flex-wrap gap-2">
         <Badge variant="outline" className="text-purple-300 border-purple-800">
-          {scenarioResult.matchedScenario.category.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+          {scenarioResult.matchedScenario.category.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
         </Badge>
         {scenarioResult.matchedScenario.buildingBlocks.slice(0, 3).map((block: string) => (
           <Badge key={block} variant="outline" className="text-blue-300 border-blue-800">
-            {block.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+            {block.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
           </Badge>
         ))}
       </div>

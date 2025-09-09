@@ -13,7 +13,8 @@ export function HeroSection() {
 
   const handleBookDemo = () => {
     trackEvent('demo_requested');
-    window.open('https://integration.app/book-a-demo', '_blank');
+    const w = window.open('https://integration.app/book-a-demo', '_blank', 'noopener,noreferrer');
+    if (w) w.opener = null;
   };
 
   return (

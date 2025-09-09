@@ -13,7 +13,8 @@ export function StickyFooter() {
 
   const handleBookDemo = () => {
     trackEvent('demo_requested');
-    window.open('https://integration.app/book-a-demo', '_blank');
+    const win = window.open('https://integration.app/book-a-demo', '_blank', 'noopener,noreferrer');
+    if (win) win.opener = null;
   };
 
   return (
